@@ -1,4 +1,3 @@
-
 "use strict";
 
 // ============================================================
@@ -106,7 +105,7 @@ function formatScientific(value, digits = 2) {
     const exponent = Math.floor(Math.log10(Math.abs(value)));
     const mantissa = value / Math.pow(10, exponent);
 
-    return `${formatNumber(mantissa, digits)} × 10${toSuperscript(exponent)}`;
+    return `formatNumber(mantissa,digits)×10{toSuperscript(exponent)}`;
 }
 
 function toSuperscript(number) {
