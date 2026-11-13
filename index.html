@@ -2,343 +2,1235 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hipertermia Magnética — Fe3O4</title>
 
-    <title>Hipertermia Magnética — Fe₃O₄</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
-    <link rel="stylesheet" href="Style.css">
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.128.0/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #111116;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: row-reverse;
+    color: #e6edf3;
+}
+
+#ui-layer {
+    width: 25%;
+    min-width: 310px;
+    height: 100%;
+    background: #0d1117;
+    border-left: 1px solid #30363d;
+    padding: 22px;
+    overflow-y: auto;
+    z-index: 10;
+}
+
+h1 {
+    font-size: 21px;
+    color: #58a6ff;
+    margin-bottom: 5px;
+}
+
+.subtitle {
+    font-size: 12px;
+    color: #8b949e;
+    margin-bottom: 22px;
+}
+
+.section-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #c9d1d9;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    margin: 22px 0 13px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid #30363d;
+}
+
+.control-group {
+    margin-bottom: 17px;
+}
+
+.control-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 7px;
+    font-size: 13px;
+}
+
+.control-header label {
+    color: #c9d1d9;
+}
+
+.value {
+    color: #58a6ff;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+}
+
+input[type="range"] {
+    width: 100%;
+    accent-color: #58a6ff;
+    cursor: pointer;
+}
+
+.unit {
+    color: #8b949e;
+    font-size: 11px;
+}
+
+.equation-box {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+    font-family: Georgia, serif;
+    font-size: 14px;
+    text-align: center;
+    color: #e6edf3;
+    line-height: 1.8;
+    overflow-x: auto;
+}
+
+.equation-label {
+    color: #8b949e;
+    font-size: 11px;
+    font-family: 'Segoe UI', sans-serif;
+    text-align: left;
+    margin-bottom: 5px;
+}
+
+.stats-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.stat-card {
+    flex: 1;
+    min-width: 0;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.stat-label {
+    font-size: 10px;
+    color: #8b949e;
+    margin-bottom: 6px;
+}
+
+.stat-value {
+    font-size: 15px;
+    color: #58a6ff;
+    font-weight: bold;
+    overflow-wrap: anywhere;
+}
+
+.stat-unit {
+    font-size: 10px;
+    color: #8b949e;
+    margin-top: 3px;
+}
+
+button {
+    background: #21262d;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+    padding: 9px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: 0.2s;
+}
+
+button:hover {
+    background: #30363d;
+    border-color: #58a6ff;
+}
+
+.button-primary {
+    background: #1f6feb;
+    border-color: #1f6feb;
+    color: white;
+}
+
+.button-primary:hover {
+    background: #388bfd;
+}
+
+.button-row {
+    display: flex;
+    gap: 8px;
+    margin: 15px 0;
+}
+
+.button-row button {
+    flex: 1;
+}
+
+.record-container {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 15px;
+}
+
+.record-container p {
+    color: #8b949e;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.accordion {
+    width: 100%;
+    text-align: left;
+    margin-top: 10px;
+}
+
+.accordion-content {
+    display: none;
+    color: #8b949e;
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 12px 4px;
+}
+
+.accordion-content.open {
+    display: block;
+}
+
+.citationBox {
+    border-left: 3px solid #58a6ff;
+    padding: 10px;
+    margin-top: 18px;
+    background: #161b22;
+    color: #8b949e;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.citationBox strong {
+    color: #c9d1d9;
+}
+
+/* VISUALIZAÇÃO 3D */
+
+#canvas-container {
+    width: 75%;
+    height: 100%;
+    position: relative;
+    background: radial-gradient(ellipse at center, #171d28 0%, #111116 75%);
+}
+
+#canvas-container canvas {
+    display: block;
+}
+
+#hud {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    pointer-events: none;
+    background: rgba(13,17,23,0.88);
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 12px 15px;
+    font-size: 12px;
+    color: #c9d1d9;
+    line-height: 1.8;
+}
+
+#hud strong {
+    color: #58a6ff;
+}
+
+#legend {
+    position: absolute;
+    bottom: 18px;
+    left: 18px;
+    background: rgba(13,17,23,0.88);
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 12px 15px;
+    font-size: 11px;
+    color: #c9d1d9;
+    line-height: 1.8;
+    pointer-events: none;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 7px;
+}
+
+#field-indicator {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    color: #ffbb66;
+    font-size: 12px;
+    text-align: right;
+    pointer-events: none;
+}
+
+#temperature-overlay {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    width: min(340px, 45%);
+    background: rgba(13,17,23,0.92);
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 12px;
+    pointer-events: none;
+}
+
+#temperature-overlay canvas {
+    width: 100%;
+    height: 125px;
+}
+
+.graph-title {
+    color: #c9d1d9;
+    font-size: 11px;
+    margin-bottom: 8px;
+}
+
+.graph-info {
+    color: #8b949e;
+    font-size: 10px;
+    margin-top: 5px;
+}
+
+@media (max-width: 850px) {
+    body {
+        flex-direction: column;
+    }
+
+    #ui-layer {
+        width: 100%;
+        height: 45%;
+        min-width: 0;
+        border-left: none;
+        border-top: 1px solid #30363d;
+        order: 2;
+    }
+
+    #canvas-container {
+        width: 100%;
+        height: 55%;
+        order: 1;
+    }
+
+    #temperature-overlay {
+        width: 45%;
+        right: 8px;
+        bottom: 8px;
+    }
+}
+</style>
 </head>
 
 <body>
 
-<div id="simulation">
+<div id="ui-layer">
 
-    <!-- PAINEL DE CONTROLE -->
+    <h1>Hipertermia Magnética</h1>
+    <div class="subtitle">Nanopartículas de magnetita — Fe₃O₄</div>
 
-    <div id="ui-layer">
+    <div class="section-title">Parâmetros magnéticos</div>
 
-        <h1>Hipertermia Magnética</h1>
-        <div class="subtitle">
-            Nanopartículas de magnetita — Fe₃O₄
+    <div class="control-group">
+        <div class="control-header">
+            <label>Temperatura inicial</label>
+            <span class="value" id="temp-value">300 K</span>
         </div>
-
-        <div class="section-title">Composição e modelo</div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label for="compositionSelect">Composição</label>
-            </div>
-
-            <select id="compositionSelect">
-                <option value="0">Fe₃O₄ — x = 0.00</option>
-                <option value="0.020">Co₀.₀₂Fe₂.₉₈O₄ — x = 0.02</option>
-            </select>
-        </div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label for="methodSelect">Determinação de K_eff</label>
-            </div>
-
-            <select id="methodSelect">
-                <option value="MT">M(T)</option>
-                <option value="MR">Mr(T)/Ms</option>
-                <option value="HC">Hc(T)</option>
-            </select>
-        </div>
-
-        <div class="stats-row">
-            <div class="stat-card">
-                <div class="stat-label">Magnetização de saturação</div>
-                <div class="stat-value" id="msValue">—</div>
-                <div class="stat-unit">emu/g</div>
-            </div>
-        </div>
-
-        <div class="stats-row">
-            <div class="stat-card">
-                <div class="stat-label">K_eff da Tabela 2</div>
-                <div class="stat-value" id="keffTableValue">—</div>
-                <div class="stat-unit" id="keffUncertainty">—</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Diâmetro da Tabela 2</div>
-                <div class="stat-value" id="diameterTableValue">—</div>
-                <div class="stat-unit">nm</div>
-            </div>
-        </div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label>Amortecimento α</label>
-                <span class="value" id="alphaValue">—</span>
-            </div>
-        </div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label for="manualK">Definir K_eff manualmente</label>
-                <input type="checkbox" id="manualK">
-            </div>
-
-            <div class="control-header">
-                <label>Anisotropia efetiva</label>
-                <span class="value" id="keffSliderValue">4.10</span>
-            </div>
-
-            <input
-                id="keffSlider"
-                type="range"
-                min="0.5"
-                max="8"
-                step="0.1"
-                value="4.1"
-                disabled
-            >
-
-            <div class="unit">× 10⁵ erg/cm³</div>
-        </div>
-
-        <div class="section-title">Parâmetros físicos</div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label for="tempSlider">Temperatura</label>
-                <span class="value" id="tempValue">300</span>
-            </div>
-
-            <input
-                id="tempSlider"
-                type="range"
-                min="250"
-                max="400"
-                step="1"
-                value="300"
-            >
-
-            <div class="unit">K</div>
-        </div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label for="diameterSlider">Diâmetro da partícula</label>
-                <span class="value" id="diameterValue">7.9</span>
-            </div>
-
-            <input
-                id="diameterSlider"
-                type="range"
-                min="5"
-                max="20"
-                step="0.1"
-                value="7.9"
-            >
-
-            <div class="unit">nm</div>
-        </div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label for="fieldSlider">Campo magnético H₀</label>
-                <span class="value" id="fieldValue">250</span>
-            </div>
-
-            <input
-                id="fieldSlider"
-                type="range"
-                min="50"
-                max="500"
-                step="10"
-                value="250"
-            >
-
-            <div class="unit">Oe</div>
-        </div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label for="frequencySlider">Frequência</label>
-                <span class="value" id="frequencyValue">624</span>
-            </div>
-
-            <input
-                id="frequencySlider"
-                type="range"
-                min="100"
-                max="1000"
-                step="1"
-                value="624"
-            >
-
-            <div class="unit">kHz</div>
-        </div>
-
-        <div class="section-title">Modelo físico</div>
-
-        <div class="equation-box">
-            <div class="equation-label">Relaxação de Néel</div>
-            τ<sub>N</sub> = τ<sub>0</sub> exp(K<sub>eff</sub>V/k<sub>B</sub>T)
-        </div>
-
-        <div class="equation-box">
-            <div class="equation-label">Susceptibilidade inicial</div>
-            χ<sub>0</sub> =
-            μ<sub>0</sub>M<sub>s</sub>²V / 3k<sub>B</sub>T
-        </div>
-
-        <div class="equation-box">
-            <div class="equation-label">Potência dissipada</div>
-            P =
-            μ<sub>0</sub>πχ<sub>0</sub>H<sub>0</sub>²f
-            ·
-            ωτ / (1 + ω²τ²)
-        </div>
-
-        <div class="section-title">Resultados calculados</div>
-
-        <div class="stats-row">
-            <div class="stat-card">
-                <div class="stat-label">Tempo de Néel</div>
-                <div class="stat-value" id="tauValue">—</div>
-                <div class="stat-unit">τₙ</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-label">ωτ</div>
-                <div class="stat-value" id="omegaTauValue">—</div>
-                <div class="stat-unit">adimensional</div>
-            </div>
-        </div>
-
-        <div class="stats-row">
-            <div class="stat-card">
-                <div class="stat-label">Defasagem</div>
-                <div class="stat-value" id="phaseValue">—</div>
-                <div class="stat-unit">graus</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Susceptibilidade</div>
-                <div class="stat-value" id="chiValue">—</div>
-                <div class="stat-unit">χ₀</div>
-            </div>
-        </div>
-
-        <div class="stats-row">
-            <div class="stat-card">
-                <div class="stat-label">Potência volumétrica</div>
-                <div class="stat-value" id="powerVolumeValue">—</div>
-                <div class="stat-unit">W/m³</div>
-            </div>
-        </div>
-
-        <div class="stats-row">
-            <div class="stat-card">
-                <div class="stat-label">Potência específica</div>
-                <div class="stat-value" id="spaValue">—</div>
-                <div class="stat-unit">W/g</div>
-            </div>
-        </div>
-
-        <div class="section-title">Gravação</div>
-
-        <div class="record-container">
-            <div class="control-group">
-                <div class="control-header">
-                    <label for="recordDuration">Duração</label>
-                </div>
-
-                <input
-                    id="recordDuration"
-                    type="number"
-                    min="1"
-                    max="60"
-                    value="10"
-                >
-
-                <div class="unit">segundos (máximo 60 s)</div>
-            </div>
-
-            <div class="control-group">
-                <div class="control-header">
-                    <label for="recordFilename">Nome do arquivo</label>
-                </div>
-
-                <input
-                    id="recordFilename"
-                    type="text"
-                    value="hipertermia-magnetica"
-                >
-            </div>
-
-            <button id="recordBtn" class="button-primary">
-                Gravar
-            </button>
-        </div>
-
-        <button class="accordion" id="infoToggleBtn">
-            Sobre o modelo físico
-            <span id="accordionIcon">+</span>
-        </button>
-
-        <div class="accordion-content" id="infoBox">
-            <p>
-                O modelo considera a relaxação de Néel como mecanismo
-                dominante, adotando τ = τN. A relaxação Browniana
-                não é incluída.
-            </p>
-
-            <br>
-
-            <p>
-                A potência dissipada é estimada pelo modelo de
-                resposta linear, utilizando a susceptibilidade
-                inicial e o tempo de relaxação de Néel.
-            </p>
-
-            <br>
-
-            <p>
-                A representação tridimensional é esquemática:
-                não corresponde a uma simulação estocástica
-                microscópica nem à integração da equação
-                de Landau-Lifshitz-Gilbert.
-            </p>
-        </div>
-
-        <div class="citationBox">
-            <strong>Referência</strong><br>
-
-            Control of Anisotropy and Magnetic Hyperthermia Effect
-            by Addition of Cobalt on Magnetite Nanoparticles.
-
-            ACS Applied Materials & Interfaces (2025),
-            17, 13083–13093.
-
-            DOI: 10.1021/acsami.4c03343.
-        </div>
-
+        <input id="temperature" type="range" min="250" max="400" step="1" value="300">
     </div>
 
-    <!-- VISUALIZAÇÃO 3D -->
-
-    <div id="canvas-container">
-
-        <div id="loading">
-            Inicializando simulação...
+    <div class="control-group">
+        <div class="control-header">
+            <label>Diâmetro da partícula</label>
+            <span class="value" id="diameter-value">9 nm</span>
         </div>
+        <input id="diameter" type="range" min="5" max="25" step="0.5" value="9">
+    </div>
 
+    <div class="control-group">
+        <div class="control-header">
+            <label>Anisotropia efetiva</label>
+            <span class="value" id="anisotropy-value">1.0 × 10⁵</span>
+        </div>
+        <input id="anisotropy" type="range" min="0.2" max="8" step="0.1" value="1">
+        <div class="unit">× 10⁵ erg/cm³</div>
+    </div>
+
+    <div class="control-group">
+        <div class="control-header">
+            <label>Campo magnético H₀</label>
+            <span class="value" id="field-value">250 Oe</span>
+        </div>
+        <input id="field" type="range" min="50" max="500" step="10" value="250">
+    </div>
+
+    <div class="control-group">
+        <div class="control-header">
+            <label>Frequência</label>
+            <span class="value" id="frequency-value">624 kHz</span>
+        </div>
+        <input id="frequency" type="range" min="100" max="1000" step="1" value="624">
+        <div class="unit">kHz</div>
+    </div>
+
+    <div class="section-title">Parâmetros térmicos</div>
+
+    <div class="control-group">
+        <div class="control-header">
+            <label>Concentração volumétrica</label>
+            <span class="value" id="concentration-value">1.0%</span>
+        </div>
+        <input id="concentration" type="range" min="0.1" max="10" step="0.1" value="1">
+    </div>
+
+    <div class="control-group">
+        <div class="control-header">
+            <label>Troca térmica com o meio</label>
+            <span class="value" id="cooling-value">1000</span>
+        </div>
+        <input id="cooling" type="range" min="100" max="5000" step="100" value="1000">
+        <div class="unit">W m⁻³ K⁻¹</div>
+    </div>
+
+    <div class="control-group">
+        <div class="control-header">
+            <label>Velocidade da simulação</label>
+            <span class="value" id="speed-value">20×</span>
+        </div>
+        <input id="speed" type="range" min="1" max="100" step="1" value="20">
+    </div>
+
+    <div class="section-title">Equações do modelo</div>
+
+    <div class="equation-box">
+        <div class="equation-label">Relaxação de Néel</div>
+        τ<sub>N</sub> = τ<sub>0</sub> exp(K<sub>eff</sub>V/k<sub>B</sub>T)
+    </div>
+
+    <div class="equation-box">
+        <div class="equation-label">Potência magnética</div>
+        P = μ<sub>0</sub>πχ<sub>0</sub>H<sub>0</sub>²f
+        · 2πfτ / [1 + (2πfτ)²]
+    </div>
+
+    <div class="equation-box">
+        <div class="equation-label">Balanço térmico</div>
+        ρc<sub>p</sub>dT/dt = φP − h<sub>v</sub>(T − T<sub>amb</sub>)
+    </div>
+
+    <div class="section-title">Resultados em tempo real</div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Temperatura</div>
+            <div class="stat-value" id="current-temp">300.00</div>
+            <div class="stat-unit">K</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Variação térmica</div>
+            <div class="stat-value" id="delta-temp">0.00</div>
+            <div class="stat-unit">K</div>
+        </div>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Potência magnética</div>
+            <div class="stat-value" id="power-result">—</div>
+            <div class="stat-unit">W/m³</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Tempo de Néel</div>
+            <div class="stat-value" id="tau-result">—</div>
+            <div class="stat-unit">s</div>
+        </div>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Defasagem</div>
+            <div class="stat-value" id="phase-result">—</div>
+            <div class="stat-unit">graus</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Tempo decorrido</div>
+            <div class="stat-value" id="time-result">0</div>
+            <div class="stat-unit">s simulados</div>
+        </div>
+    </div>
+
+    <div class="button-row">
+        <button class="button-primary" id="pause-button">Pausar</button>
+        <button id="reset-button">Reiniciar</button>
+    </div>
+
+    <button class="accordion" id="details-button">
+        Sobre o modelo físico ▾
+    </button>
+
+    <div class="accordion-content" id="details-content">
+        <p>
+            A potência magnética é calculada pelo modelo de
+            resposta linear. A relaxação de Néel é considerada
+            como mecanismo dominante, adotando τ = τN.
+        </p>
+        <br>
+        <p>
+            A potência magnética é multiplicada pela fração
+            volumétrica de nanopartículas para obter a potência
+            dissipada por volume de suspensão.
+        </p>
+        <br>
+        <p>
+            A temperatura é calculada por um balanço de energia
+            com capacidade térmica volumétrica aproximada da água
+            e uma perda térmica efetiva para o ambiente.
+        </p>
+        <br>
+        <p>
+            A oscilação do campo é representada visualmente em
+            velocidade reduzida. O aquecimento utiliza a potência
+            média por ciclo, não a frequência visual da animação.
+        </p>
+    </div>
+
+    <div class="citationBox">
+        <strong>Referência</strong><br>
+        Control of Anisotropy and Magnetic Hyperthermia Effect by
+        Addition of Cobalt on Magnetite Nanoparticles.
+        ACS Applied Materials & Interfaces (2025), 17, 13083–13093.
+        DOI: 10.1021/acsami.4c03343.
     </div>
 
 </div>
 
-<!-- O main.js deve ser carregado depois do HTML e do Three.js -->
-<script src="main.js"></script>
+<div id="canvas-container">
+
+    <div id="hud">
+        <strong>Fe₃O₄ — x = 0.00</strong><br>
+        Campo: <span id="hud-field">0 Oe</span><br>
+        Temperatura: <span id="hud-temp">300 K</span><br>
+        Aquecimento: <span id="hud-heating">0.00 K</span>
+    </div>
+
+    <div id="field-indicator">
+        H(t) = H₀ sen(2πft)
+    </div>
+
+    <div id="legend">
+        <div><span class="legend-dot" style="background:#e87545"></span>Nanopartículas</div>
+        <div><span class="legend-dot" style="background:#58a6ff"></span>Momentos magnéticos</div>
+        <div><span class="legend-dot" style="background:#ffbb66"></span>Campo aplicado</div>
+        <div><span class="legend-dot" style="background:#ff5533"></span>Aquecimento</div>
+    </div>
+
+    <div id="temperature-overlay">
+        <div class="graph-title">Evolução da temperatura da amostra</div>
+        <canvas id="temperature-graph"></canvas>
+        <div class="graph-info" id="graph-info">
+            T = 300 K | ΔT = 0 K
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+// ======================================================
+// CONSTANTES
+// ======================================================
+
+const MU0 = 4 * Math.PI * 1e-7;
+const KB = 1.380649e-23;
+const TAU0 = 1e-10;
+
+const MS_MASS = 80;
+const DENSITY_MAG = 5170;
+const MS = MS_MASS * DENSITY_MAG;
+
+const Oe_TO_Am = 1000 / (4 * Math.PI);
+
+// Propriedades térmicas aproximadas da suspensão
+const RHO_SAMPLE = 1000;
+const CP_SAMPLE = 4180;
+const RHO_CP = RHO_SAMPLE * CP_SAMPLE;
+
+// ======================================================
+// CONTROLES
+// ======================================================
+
+const $ = id => document.getElementById(id);
+
+const controls = {
+    temperature: $('temperature'),
+    diameter: $('diameter'),
+    anisotropy: $('anisotropy'),
+    field: $('field'),
+    frequency: $('frequency'),
+    concentration: $('concentration'),
+    cooling: $('cooling'),
+    speed: $('speed')
+};
+
+let ambientTemperature = 300;
+let sampleTemperature = 300;
+let simulationTime = 0;
+let running = true;
+let animationTime = 0;
+
+let temperatureHistory = [];
+let historyInterval = 0;
+
+// ======================================================
+// CÁLCULO MAGNÉTICO
+// ======================================================
+
+function calculateMagnetic(T) {
+
+    const d_nm = Number(controls.diameter.value);
+    const K_input = Number(controls.anisotropy.value);
+    const H_oe = Number(controls.field.value);
+    const f_kHz = Number(controls.frequency.value);
+
+    const d = d_nm * 1e-9;
+    const V = (4 / 3) * Math.PI * Math.pow(d / 2, 3);
+
+    // Conversão erg/cm³ para J/m³
+    const K = K_input * 1e4;
+
+    const H = H_oe * Oe_TO_Am;
+    const f = f_kHz * 1e3;
+
+    const exponent = K * V / (KB * T);
+    const tau = TAU0 * Math.exp(Math.min(exponent, 700));
+
+    const chi = MU0 * MS * MS * V / (3 * KB * T);
+
+    const omegaTau = 2 * Math.PI * f * tau;
+
+    // Equação (3): potência média por volume magnético
+    const Pmag =
+        MU0 * Math.PI * chi * H * H * f *
+        omegaTau / (1 + omegaTau * omegaTau);
+
+    const phase = Math.atan(omegaTau) * 180 / Math.PI;
+
+    return {
+        V, tau, chi, Pmag, phase, omegaTau,
+        H_oe, f_kHz, d_nm
+    };
+}
+
+// ======================================================
+// BALANÇO TÉRMICO
+// ======================================================
+
+function thermalDerivative(T) {
+
+    const m = calculateMagnetic(T);
+
+    const phi = Number(controls.concentration.value) / 100;
+    const hv = Number(controls.cooling.value);
+
+    // Potência por volume de suspensão
+    const Psample = phi * m.Pmag;
+
+    // Perda de calor para o ambiente
+    const Ploss = hv * (T - ambientTemperature);
+
+    // Equação diferencial térmica
+    return (Psample - Ploss) / RHO_CP;
+}
+
+// Integração RK4 da temperatura
+function integrateTemperature(dt) {
+
+    const k1 = thermalDerivative(sampleTemperature);
+
+    const k2 = thermalDerivative(
+        sampleTemperature + k1 * dt / 2
+    );
+
+    const k3 = thermalDerivative(
+        sampleTemperature + k2 * dt / 2
+    );
+
+    const k4 = thermalDerivative(
+        sampleTemperature + k3 * dt
+    );
+
+    sampleTemperature += dt *
+        (k1 + 2*k2 + 2*k3 + k4) / 6;
+
+    // Limite de segurança numérica
+    sampleTemperature = Math.max(
+        ambientTemperature - 20,
+        Math.min(sampleTemperature, ambientTemperature + 500)
+    );
+}
+
+// ======================================================
+// FORMATAÇÃO E INTERFACE
+// ======================================================
+
+function sci(v) {
+    if (!Number.isFinite(v)) return "—";
+    return v.toExponential(2);
+}
+
+function updateInterface() {
+
+    const T0 = Number(controls.temperature.value);
+    const m = calculateMagnetic(sampleTemperature);
+
+    $('temp-value').textContent = `${T0} K`;
+    $('diameter-value').textContent =
+        `${m.d_nm} nm`;
+
+    $('anisotropy-value').textContent =
+        `${Number(controls.anisotropy.value).toFixed(1)} × 10⁵`;
+
+    $('field-value').textContent =
+        `${m.H_oe} Oe`;
+
+    $('frequency-value').textContent =
+        `${m.f_kHz} kHz`;
+
+    $('concentration-value').textContent =
+        `${Number(controls.concentration.value).toFixed(1)}%`;
+
+    $('cooling-value').textContent =
+        controls.cooling.value;
+
+    $('speed-value').textContent =
+        `${controls.speed.value}×`;
+
+    $('current-temp').textContent =
+        sampleTemperature.toFixed(2);
+
+    $('delta-temp').textContent =
+        (sampleTemperature - ambientTemperature).toFixed(2);
+
+    $('power-result').textContent =
+        sci(m.Pmag);
+
+    $('tau-result').textContent =
+        sci(m.tau);
+
+    $('phase-result').textContent =
+        `${m.phase.toFixed(1)}°`;
+
+    $('time-result').textContent =
+        simulationTime.toFixed(1);
+
+    $('hud-field').textContent =
+        `${m.H_oe} Oe`;
+
+    $('hud-temp').textContent =
+        `${sampleTemperature.toFixed(2)} K`;
+
+    $('hud-heating').textContent =
+        `${(sampleTemperature - ambientTemperature).toFixed(2)} K`;
+
+    $('graph-info').textContent =
+        `T = ${sampleTemperature.toFixed(2)} K | ΔT = ${(sampleTemperature - ambientTemperature).toFixed(2)} K`;
+}
+
+// ======================================================
+// GRÁFICO DE TEMPERATURA
+// ======================================================
+
+const graph = $('temperature-graph');
+const gctx = graph.getContext('2d');
+
+function drawTemperatureGraph() {
+
+    const w = graph.width = graph.clientWidth * 2;
+    const h = graph.height = graph.clientHeight * 2;
+
+    gctx.clearRect(0, 0, w, h);
+
+    const left = 42;
+    const right = w - 10;
+    const top = 10;
+    const bottom = h - 25;
+
+    gctx.strokeStyle = '#30363d';
+    gctx.lineWidth = 1.5;
+
+    // Eixos
+    gctx.beginPath();
+    gctx.moveTo(left, top);
+    gctx.lineTo(left, bottom);
+    gctx.lineTo(right, bottom);
+    gctx.stroke();
+
+    const maxDelta = Math.max(
+        1,
+        ...temperatureHistory.map(p => p.delta)
+    );
+
+    // Linhas horizontais
+    gctx.font = '19px Segoe UI';
+    gctx.fillStyle = '#8b949e';
+
+    for (let i = 0; i <= 4; i++) {
+
+        const y = bottom - (bottom - top) * i / 4;
+
+        gctx.strokeStyle = '#252c35';
+        gctx.beginPath();
+        gctx.moveTo(left, y);
+        gctx.lineTo(right, y);
+        gctx.stroke();
+
+        gctx.fillText(
+            (maxDelta * i / 4).toFixed(1),
+            2,
+            y + 6
+        );
+    }
+
+    if (temperatureHistory.length < 2) return;
+
+    gctx.strokeStyle = '#ff6845';
+    gctx.lineWidth = 3;
+    gctx.beginPath();
+
+    temperatureHistory.forEach((p, i) => {
+
+        const x = left +
+            (right - left) * i /
+            (temperatureHistory.length - 1);
+
+        const y = bottom -
+            (bottom - top) * p.delta / maxDelta;
+
+        if (i === 0) gctx.moveTo(x, y);
+        else gctx.lineTo(x, y);
+    });
+
+    gctx.stroke();
+
+    // Rótulos
+    gctx.fillStyle = '#8b949e';
+    gctx.font = '18px Segoe UI';
+    gctx.fillText('ΔT (K)', left, 17);
+    gctx.fillText('tempo', right - 48, h - 4);
+}
+
+// ======================================================
+// THREE.JS
+// ======================================================
+
+const container = $('canvas-container');
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x111116);
+
+const camera = new THREE.PerspectiveCamera(
+    45,
+    container.clientWidth / container.clientHeight,
+    0.1,
+    1000
+);
+
+camera.position.set(8, 6, 11);
+
+const renderer = new THREE.WebGLRenderer({
+    antialias: true
+});
+
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(
+    container.clientWidth,
+    container.clientHeight
+);
+
+container.appendChild(renderer.domElement);
+
+const orbit = new THREE.OrbitControls(
+    camera,
+    renderer.domElement
+);
+
+orbit.enableDamping = true;
+orbit.dampingFactor = 0.06;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+keyLight.position.set(5, 8, 6);
+scene.add(keyLight);
+
+const fillLight = new THREE.PointLight(0x4477ff, 0.8);
+fillLight.position.set(-6, -3, -5);
+scene.add(fillLight);
+
+// ======================================================
+// PARTÍCULAS MAGNÉTICAS
+// ======================================================
+
+const particleGroup = new THREE.Group();
+scene.add(particleGroup);
+
+const particles = [];
+const moments = [];
+
+const particleGeometry =
+    new THREE.SphereGeometry(0.16, 24, 24);
+
+const NX = 5;
+const NY = 4;
+const NZ = 4;
+
+for (let x = 0; x < NX; x++) {
+    for (let y = 0; y < NY; y++) {
+        for (let z = 0; z < NZ; z++) {
+
+            const material = new THREE.MeshStandardMaterial({
+                color: 0xb95c3b,
+                roughness: 0.4,
+                metalness: 0.15,
+                emissive: 0x000000,
+                emissiveIntensity: 0
+            });
+
+            const particle = new THREE.Mesh(
+                particleGeometry,
+                material
+            );
+
+            particle.position.set(
+                (x - (NX - 1) / 2) * 1.05,
+                (y - (NY - 1) / 2) * 1.05,
+                (z - (NZ - 1) / 2) * 1.05
+            );
+
+            particleGroup.add(particle);
+            particles.push(particle);
+
+            const arrow = new THREE.ArrowHelper(
+                new THREE.Vector3(0, 1, 0),
+                particle.position.clone(),
+                0.58,
+                0x58a6ff,
+                0.17,
+                0.12
+            );
+
+            particleGroup.add(arrow);
+            moments.push(arrow);
+        }
+    }
+}
+
+// ======================================================
+// CAMPO MAGNÉTICO
+// ======================================================
+
+const fieldArrow = new THREE.ArrowHelper(
+    new THREE.Vector3(0, 1, 0),
+    new THREE.Vector3(0, -3.4, 0),
+    2.1,
+    0xffbb66,
+    0.35,
+    0.23
+);
+
+scene.add(fieldArrow);
+
+const axisGeometry =
+    new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, -4, 0),
+        new THREE.Vector3(0, 4, 0)
+    ]);
+
+scene.add(new THREE.Line(
+    axisGeometry,
+    new THREE.LineBasicMaterial({
+        color: 0x414b5b,
+        transparent: true,
+        opacity: 0.5
+    })
+));
+
+// ======================================================
+// ANIMAÇÃO E AQUECIMENTO
+// ======================================================
+
+const clock = new THREE.Clock();
+
+function animate() {
+
+    requestAnimationFrame(animate);
+
+    const dt = Math.min(clock.getDelta(), 0.05);
+
+    if (running) {
+
+        const speed = Number(controls.speed.value);
+
+        // Tempo físico acelerado para visualização
+        const physicalDt = dt * speed;
+
+        // Integração térmica em subpassos
+        const steps = Math.max(
+            1,
+            Math.ceil(physicalDt / 0.02)
+        );
+
+        const subDt = physicalDt / steps;
+
+        for (let i = 0; i < steps; i++) {
+            integrateTemperature(subDt);
+        }
+
+        simulationTime += physicalDt;
+
+        animationTime += dt;
+
+        historyInterval += physicalDt;
+
+        if (historyInterval >= 1) {
+
+            temperatureHistory.push({
+                time: simulationTime,
+                delta: sampleTemperature - ambientTemperature
+            });
+
+            if (temperatureHistory.length > 120) {
+                temperatureHistory.shift();
+            }
+
+            historyInterval = 0;
+        }
+    }
+
+    const m = calculateMagnetic(sampleTemperature);
+
+    // Campo oscilante visual
+    const visualOmega = 2.2;
+
+    const fieldSignal =
+        Math.sin(animationTime * visualOmega);
+
+    const fieldDirection = new THREE.Vector3(
+        0,
+        fieldSignal >= 0 ? 1 : -1,
+        0
+    );
+
+    fieldArrow.setDirection(fieldDirection);
+
+    fieldArrow.setLength(
+        1.2 + 1.0 * Math.abs(fieldSignal),
+        0.35,
+        0.23
+    );
+
+    // Resposta magnética com defasagem
+    const phase = Math.atan(m.omegaTau);
+
+    const response = Math.sin(
+        animationTime * visualOmega - phase
+    );
+
+    const alignment = Math.abs(response);
+
+    // Intensidade visual do aquecimento
+    const deltaT = Math.max(
+        0,
+        sampleTemperature - ambientTemperature
+    );
+
+    const thermalGlow = Math.min(
+        1,
+        deltaT / 30
+    );
+
+    for (let i = 0; i < moments.length; i++) {
+
+        const arrow = moments[i];
+
+        const localPhase = i * 0.19;
+
+        const angle = 0.28 * Math.sin(
+            animationTime * 0.45 + localPhase
+        );
+
+        const direction = new THREE.Vector3(
+            Math.sin(angle) * 0.25,
+            response * 0.8 + 0.2,
+            Math.cos(angle) * 0.25
+        ).normalize();
+
+        arrow.setDirection(direction);
+
+        arrow.setLength(
+            0.28 + 0.32 * alignment,
+            0.14,
+            0.10
+        );
+
+        // Aquecimento visual progressivo
+        const heatColor = new THREE.Color(
+            0xff3b16
+        );
+
+        const baseColor = new THREE.Color(
+            0xb95c3b
+        );
+
+        const color = baseColor.clone().lerp(
+            heatColor,
+            thermalGlow
+        );
+
+        particles[i].material.color.copy(color);
+
+        particles[i].material.emissive.setRGB(
+            0.3 * thermalGlow,
+            0.025 * thermalGlow,
+            0
+        );
+
+        particles[i].material.emissiveIntensity =
+            0.8 * thermalGlow;
+
+        // Pequena pulsação associada ao campo
+        particles[i].scale.setScalar(
+            1 + 0.025 * Math.abs(fieldSignal)
+        );
+    }
+
+    orbit.update();
+    renderer.render(scene, camera);
+
+    updateInterface();
+    drawTemperatureGraph();
+}
+
+animate();
+
+// ======================================================
+// EVENTOS
+// ======================================================
+
+controls.temperature.addEventListener('input', () => {
+
+    ambientTemperature = Number(
+        controls.temperature.value
+    );
+
+    resetThermalSimulation();
+});
+
+[
+    controls.diameter,
+    controls.anisotropy,
+    controls.field,
+    controls.frequency,
+    controls.concentration,
+    controls.cooling,
+    controls.speed
+].forEach(control => {
+    control.addEventListener('input', updateInterface);
+});
+
+function resetThermalSimulation() {
+
+    sampleTemperature = ambientTemperature;
+    simulationTime = 0;
+    animationTime = 0;
+    historyInterval = 0;
+    temperatureHistory = [];
+
+    temperatureHistory.push({
+        time: 0,
+        delta: 0
+    });
+
+    updateInterface();
+}
+
+$('pause-button').addEventListener('click', () => {
+
+    running = !running;
+
+    $('pause-button').textContent =
+        running ? 'Pausar' : 'Continuar';
+});
+
+$('reset-button').addEventListener('click', () => {
+
+    controls.temperature.value = 300;
+    controls.diameter.value = 9;
+    controls.anisotropy.value = 1;
+    controls.field.value = 250;
+    controls.frequency.value = 624;
+    controls.concentration.value = 1;
+    controls.cooling.value = 1000;
+    controls.speed.value = 20;
+
+    ambientTemperature = 300;
+    running = true;
+
+    $('pause-button').textContent = 'Pausar';
+
+    resetThermalSimulation();
+});
+
+$('details-button').addEventListener('click', () => {
+    $('details-content').classList.toggle('open');
+});
+
+window.addEventListener('resize', () => {
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(width, height);
+});
+
+// Inicialização
+resetThermalSimulation();
+
+</script>
 
 </body>
 </html>
