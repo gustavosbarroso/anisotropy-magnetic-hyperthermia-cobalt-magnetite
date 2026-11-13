@@ -3,126 +3,268 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Hipertermia Magnética em Nanopartículas de Magnetita — LAVINA</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Simulação didática de hipertermia magnética em nanopartículas de magnetita e cobalto-magnetita.">
+  <title>Hipertermia Magnética — LAVINA</title>
+
   <link rel="stylesheet" href="style.css">
+
+  <!-- Three.js e controles de órbita -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <!-- MathJax -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$']]
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <script defer src="main.js"></script>
 </head>
+
 <body>
-  <div id="ui-layer">
-    <h1 id="mainTitle">Hipertermia magnética em nanopartículas de magnetita</h1>
+  <main class="app">
 
-    <div id="citationBox">
-      <div class="ref-heading">Artigo de referência</div>
-      <span class="ref-authors">Artigo de referência — ACS Applied Materials & Interfaces (2025)</span><br>
-      <em>Control of Anisotropy and Magnetic Hyperthermia Effect by Addition of Cobalt on Magnetite Nanoparticles</em><br>
-      <strong class="ref-doi">DOI:</strong>
-      <a class="ref-link" href="https://doi.org/10.1021/acsami.4c03343" target="_blank" rel="noopener">10.1021/acsami.4c03343</a>
-      <div class="credits-divider"></div>
-      <div class="ref-heading">Simulação</div>
-      <div class="dev-names">LAVINA — IFGW / Unicamp</div>
-      <div class="group-info">Modelo didático baseado nas equações (2) e (3) do artigo</div>
-    </div>
+    <section class="simulation-area">
+      <div id="canvas-container"></div>
 
-    <h3 class="section-heading">Parâmetros da magnetita (Fe₃O₄)</h3>
-
-    <div class="slider-container">
-      <label for="tempSlider" class="section-heading">Temperatura: <span id="tSliderVal">300</span> K</label>
-      <input type="range" id="tempSlider" min="100" max="500" step="5" value="300">
-    </div>
-
-    <div class="slider-container">
-      <label for="diameterSlider" class="section-heading">Diâmetro: <span id="diameterVal">9.0</span> nm</label>
-      <input type="range" id="diameterSlider" min="5" max="25" step="0.5" value="9">
-    </div>
-
-    <div class="slider-container">
-      <label for="anisotropySlider" class="section-heading">Anisotropia efetiva: <span id="anisotropyVal">1.0</span> × 10⁵ erg/cm³</label>
-      <input type="range" id="anisotropySlider" min="0.5" max="20" step="0.1" value="1">
-    </div>
-
-    <div class="slider-container">
-      <label for="fieldSlider" class="section-heading">Amplitude do campo H₀: <span id="fieldVal">250</span> Oe</label>
-      <input type="range" id="fieldSlider" min="50" max="600" step="10" value="250">
-    </div>
-
-    <div class="slider-container">
-      <label for="frequencySlider" class="section-heading">Frequência: <span id="frequencyVal">624</span> kHz</label>
-      <input type="range" id="frequencySlider" min="50" max="1000" step="1" value="624">
-    </div>
-
-    <div class="parameter-note">
-      Valores iniciais inspirados na Figura 1 do artigo: d = 9 nm, Kₑff = 10⁵ erg/cm³,
-      H₀ = 250 Oe, f = 624 kHz e τ₀ = 10⁻¹⁰ s.
-    </div>
-
-    <h3 class="section-heading">Equações do modelo</h3>
-    <div id="equationDisplay" class="equation-box">
-      $$\tau_N=\tau_0\exp\left(\frac{K_{\mathrm{eff}}V_{\mathrm{mag}}}{k_BT}\right)$$
-      $$P=\mu_0\pi\chi_0H_0^2f\frac{2\pi f\tau}{1+(2\pi f\tau)^2}$$
-    </div>
-
-    <div class="stats-row">
-      <div class="stat-box"><strong>τₙ</strong><span id="tauLabel">—</span></div>
-      <div class="stat-box"><strong>ωτ</strong><span id="omegaTauLabel">—</span></div>
-    </div>
-
-    <div class="stats-row">
-      <div class="stat-box"><strong>P volumétrica</strong><span id="powerLabel">—</span></div>
-      <div class="stat-box"><strong>SPA estimada</strong><span id="spaLabel">—</span></div>
-    </div>
-
-    <div class="stats-row">
-      <div class="stat-box"><strong>Defasagem φ</strong><span id="phaseLabel">—</span></div>
-      <div class="stat-box"><strong>χ₀</strong><span id="chiLabel">—</span></div>
-    </div>
-
-    <div class="record-container">
-      <h3 class="section-heading">Gravar vídeo</h3>
-      <input type="text" id="recordFilename" class="record-input" placeholder="Nome do arquivo (opcional)">
-      <div class="record-row">
-        <input type="number" id="recordDuration" class="record-input" value="5" min="1" max="60">
-        <span id="recordSecLabel">s</span>
-        <button id="recordBtn">Gravar</button>
+      <div class="canvas-hint">
+        <span>🖱 Arraste para girar</span>
+        <span>Scroll para zoom</span>
+        <span>Botão direito para deslocar</span>
       </div>
-      <div id="recordNote">O formato (MP4 ou WebM) depende do suporte do navegador.</div>
-    </div>
 
-    <div class="accordion-container">
-      <button id="infoToggleBtn" class="accordion-btn">
-        <span>Informações da simulação</span>
-        <span id="accordionIcon">+</span>
-      </button>
+      <div class="legend">
+        <div><span class="legend-dot blue"></span> Campo magnético H(t)</div>
+        <div><span class="legend-dot green"></span> Magnetização M(t)</div>
+        <div><span class="legend-dot orange"></span> Ondas térmicas</div>
+      </div>
+    </section>
 
-      <div id="infoBox" class="accordion-content">
-        <div>
-          <h4>Interpretação física</h4>
-          <p>As esferas representam nanopartículas de magnetita e as setas verdes representam esquematicamente seus momentos magnéticos. A seta azul representa o campo magnético alternado aplicado.</p>
+    <aside class="sidebar">
 
-          <ul>
-            <li><strong>Relaxação de Néel:</strong> inversão/reorientação do momento magnético no interior da nanopartícula, descrita pela equação (2).</li>
-            <li><strong>Defasagem:</strong> a resposta magnética atrasada em relação ao campo é representada por φ = arctan(ωτ).</li>
-            <li><strong>Perdas:</strong> a equação (3) calcula a potência dissipada no regime de resposta linear.</li>
-          </ul>
+      <header class="sidebar-header">
+        <h1>Hipertermia magnética</h1>
+        <p>Nanopartículas de magnetita e cobalto-magnetita</p>
+      </header>
 
-          <h4 class="spaced">Aproximações importantes</h4>
-          <ul>
-            <li>Considera-se apenas a relaxação de Néel: τ = τₙ. A relaxação Browniana não é incluída.</li>
-            <li>A animação desacelera visualmente o campo alternado; a frequência numérica usada no cálculo permanece a frequência física selecionada.</li>
-            <li>Os vetores são uma representação coletiva e didática da resposta linear, não uma simulação estocástica atomística nem uma dinâmica de Landau–Lifshitz–Gilbert.</li>
-            <li>A conversão de SPA usa a densidade aproximada da magnetita (5,17 g/cm³) e Mₛ = 80 emu/g, conforme os parâmetros de referência da Figura 1.</li>
-          </ul>
+      <section class="reference-card">
+        <div class="section-kicker">ARTIGO DE REFERÊNCIA</div>
+        <strong>ACS Applied Materials & Interfaces (2025)</strong>
+        <p class="paper-title">
+          Control of Anisotropy and Magnetic Hyperthermia Effect by Addition of Cobalt on Magnetite Nanoparticles
+        </p>
+        <a href="https://doi.org/10.1021/acsami.4c03343" target="_blank" rel="noopener">
+          DOI: 10.1021/acsami.4c03343
+        </a>
+
+        <hr>
+
+        <div class="section-kicker">SIMULAÇÃO</div>
+        <strong>LAVINA — IFGW / Unicamp</strong>
+        <p>Modelo didático baseado nas equações (2) e (3) do artigo.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Composição e anisotropia</h2>
+
+        <div class="control-group">
+          <label for="compositionSelect">Composição da nanopartícula</label>
+          <select id="compositionSelect">
+            <option value="0">x = 0 — Fe₃O₄</option>
+            <option value="0.020">x = 0,020 — Co₀,₀₂Fe₂,₉₈O₄</option>
+          </select>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <div id="canvas-container">
-    <div class="controls-hint">🖱️ Arraste para girar | Scroll para zoom | Botão direito para deslocar</div>
-  </div>
+        <div class="control-group">
+          <label for="anisotropyMethod">Método de determinação de Keff</label>
+          <select id="anisotropyMethod">
+            <option value="MT">M(T)</option>
+            <option value="Mr">Mr(T) / Ms</option>
+            <option value="Hc">Hc(T)</option>
+          </select>
+        </div>
 
-  <script src="main.js"></script>
+        <div class="parameter-readout">
+          <div>
+            <span>Magnetização de saturação em 0 K</span>
+            <strong id="msValue">91,8 ± 0,5 emu/g</strong>
+          </div>
+          <div>
+            <span>Anisotropia efetiva selecionada</span>
+            <strong id="keffValue">4,1 × 10⁵ erg/cm³</strong>
+          </div>
+          <div>
+            <span>Diâmetro médio experimental</span>
+            <strong id="experimentalDiameter">7,9 nm</strong>
+          </div>
+          <div>
+            <span>Parâmetro α</span>
+            <strong id="alphaValue">0,29 ± 0,01</strong>
+          </div>
+        </div>
+
+        <p class="small-note">
+          Os valores de Keff são provenientes da Tabela 2. O diâmetro médio é associado à composição conforme a Tabela 1.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Parâmetros da simulação</h2>
+
+        <div class="slider-group">
+          <div class="slider-heading">
+            <label for="tempSlider">Temperatura</label>
+            <strong><span id="tSliderVal">300</span> K</strong>
+          </div>
+          <input id="tempSlider" type="range" min="50" max="500" value="300" step="1">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-heading">
+            <label for="diameterSlider">Diâmetro da partícula</label>
+            <strong><span id="diameterVal">7.9</span> nm</strong>
+          </div>
+          <input id="diameterSlider" type="range" min="3" max="25" value="7.9" step="0.1">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-heading">
+            <label for="fieldSlider">Campo magnético máximo</label>
+            <strong><span id="fieldVal">250</span> Oe</strong>
+          </div>
+          <input id="fieldSlider" type="range" min="10" max="1000" value="250" step="10">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-heading">
+            <label for="frequencySlider">Frequência</label>
+            <strong><span id="frequencyVal">624</span> kHz</strong>
+          </div>
+          <input id="frequencySlider" type="range" min="10" max="1000" value="624" step="1">
+        </div>
+
+        <div class="control-group">
+          <label for="tau0Input">Tempo característico τ₀ (s)</label>
+          <input id="tau0Input" type="number" value="1e-10" min="1e-13" max="1e-7" step="1e-11">
+        </div>
+
+        <p class="small-note">
+          A frequência visual da animação é desacelerada para permitir observar a oscilação. Os cálculos utilizam a frequência física selecionada.
+        </p>
+      </section>
+
+      <section class="panel results-panel">
+        <h2>Resultados físicos</h2>
+
+        <div class="result-grid">
+          <div class="result-card">
+            <span>Relaxação de Néel</span>
+            <strong id="tauLabel">—</strong>
+          </div>
+          <div class="result-card">
+            <span>ωτ</span>
+            <strong id="omegaTauLabel">—</strong>
+          </div>
+          <div class="result-card">
+            <span>Defasagem φ</span>
+            <strong id="phaseLabel">—</strong>
+          </div>
+          <div class="result-card">
+            <span>Susceptibilidade χ₀</span>
+            <strong id="chiLabel">—</strong>
+          </div>
+          <div class="result-card">
+            <span>Potência volumétrica</span>
+            <strong id="powerLabel">—</strong>
+          </div>
+          <div class="result-card">
+            <span>SPA estimada</span>
+            <strong id="spaLabel">—</strong>
+          </div>
+        </div>
+
+        <p class="small-note">
+          A SPA é estimada dividindo a potência volumétrica pela densidade assumida de 5170 kg/m³. Não representa uma medição experimental direta.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Modelo matemático</h2>
+
+        <div class="equation">
+          <p>Relaxação de Néel</p>
+          $$\tau_N=\tau_0\exp\left(\frac{K_{\mathrm{eff}}V}{k_BT}\right)$$
+        </div>
+
+        <div class="equation">
+          <p>Potência dissipada</p>
+          $$P=\mu_0\pi\chi_0H_0^2f
+          \frac{2\pi f\tau}{1+(2\pi f\tau)^2}$$
+        </div>
+
+        <div class="equation">
+          <p>Susceptibilidade inicial</p>
+          $$\chi_0=\frac{\mu_0M_s^2V}{3k_BT}$$
+        </div>
+
+        <p class="small-note">
+          Nesta implementação, τ = τN. A relaxação browniana não é incluída.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Gravação da animação</h2>
+
+        <div class="control-group">
+          <label for="recordFilename">Nome do arquivo</label>
+          <input id="recordFilename" type="text" value="lavina-hipertermia">
+        </div>
+
+        <div class="control-group">
+          <label for="recordDuration">Duração (segundos)</label>
+          <input id="recordDuration" type="number" min="1" max="60" value="10">
+        </div>
+
+        <button id="recordBtn" class="primary-button">Gravar animação</button>
+      </section>
+
+      <section class="panel">
+        <button id="infoToggleBtn" class="accordion-button">
+          <span>Informações sobre o modelo</span>
+          <span id="accordionIcon">+</span>
+        </button>
+
+        <div id="infoBox" class="accordion-content">
+          <p>
+            A partícula central representa uma nanopartícula submetida a um campo magnético alternado.
+            O vetor verde representa a resposta da magnetização, com defasagem em relação ao campo aplicado.
+          </p>
+          <p>
+            As ondas alaranjadas representam esquematicamente a dissipação de energia térmica no meio.
+            Não correspondem à solução espacial da equação de difusão de calor.
+          </p>
+          <p>
+            A animação não resolve a dinâmica microscópica estocástica dos momentos magnéticos nem a equação de Landau-Lifshitz-Gilbert.
+          </p>
+        </div>
+      </section>
+
+      <footer class="sidebar-footer">
+        <strong>LAVINA</strong>
+        <span>Laboratório Virtual de Física</span>
+        <span>IFGW — Unicamp</span>
+      </footer>
+
+    </aside>
+  </main>
 </body>
 </html>
