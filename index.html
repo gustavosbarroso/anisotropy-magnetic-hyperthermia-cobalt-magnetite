@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -497,6 +496,8 @@ button:hover {
 </div>
 
 <script>
+
+use strict’
 // ======================================================
 // CONSTANTES FÍSICAS — SI
 // ======================================================
@@ -592,12 +593,12 @@ function updateInterface() {
 
     const r = calculate();
 
-    $('temp-value').textContent = `${r.T} K`;
-    $('diameter-value').textContent = `${r.d_nm} nm`;
+    ('temp-value').textContent=`{r.T} K`;
+    ('diameter-value').textContent=`{r.d_nm} nm`;
     $('anisotropy-value').textContent =
         `${r.K_input.toFixed(1)} × 10⁵`;
-    $('field-value').textContent = `${r.H_oe} Oe`;
-    $('frequency-value').textContent = `${r.f_kHz} kHz`;
+    ('field-value').textContent=`{r.H_oe} Oe`;
+    ('frequency-value').textContent=`{r.f_kHz} kHz`;
 
     $('volume-result').textContent =
         (r.V * 1e27).toFixed(1);
@@ -614,9 +615,9 @@ function updateInterface() {
     $('power-result').textContent =
         formatScientific(r.Pspecific / 1000);
 
-    $('hud-field').textContent = `${r.H_oe} Oe`;
-    $('hud-frequency').textContent = `${r.f_kHz} kHz`;
-    $('hud-temp').textContent = `${r.T} K`;
+    ('hud-field').textContent=`{r.H_oe} Oe`;
+    ('hud-frequency').textContent=`{r.f_kHz} kHz`;
+    ('hud-temp').textContent=`{r.T} K`;
 }
 
 // ======================================================
