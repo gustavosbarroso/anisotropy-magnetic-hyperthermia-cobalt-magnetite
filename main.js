@@ -117,6 +117,7 @@ function makeArrow(color, length, radius, headLength, headRadius) {
 // ============================================================
 
 const particles = [];
+let heroParticle = null;
 
 const particleMaterial = new THREE.MeshStandardMaterial({
   color: 0x7d91a8,
@@ -125,18 +126,20 @@ const particleMaterial = new THREE.MeshStandardMaterial({
 });
 
 const particleGeometry = new THREE.SphereGeometry(3.0, 24, 20);
-
 const up = new THREE.Vector3(0, 1, 0);
 
 function createParticles() {
   const count = 19;
 
   for (let i = 0; i < count; i++) {
-    const pos = new THREE.Vector3(
-      (Math.random() - 0.5) * 46,
-      (Math.random() - 0.5) * 46,
-      (Math.random() - 0.5) * 46
-    );
+    // A partícula central é o foco da visualização térmica.
+    const pos = i === 0
+      ? new THREE.Vector3(0, 0, 0)
+      : new THREE.Vector3(
+          (Math.random() - 0.5) * 46,
+          (Math.random() - 0.5) * 46,
+          (Math.random() - 0.5) * 46
+        );
 
     const sphere = new THREE.Mesh(
       particleGeometry,
@@ -144,6 +147,7 @@ function createParticles() {
     );
 
     sphere.position.copy(pos);
+    if (i === 0) sphere.scale.setScalar(1.35);
     scene.add(sphere);
 
     const moment = makeArrow(
@@ -157,14 +161,96 @@ function createParticles() {
     moment.position.copy(pos);
     scene.add(moment);
 
-    particles.push({
+    const particle = {
       sphere,
-      moment
-    });
+      moment,
+      basePosition: pos.clone(),
+      isHero: i === 0
+    };
+
+    particles.push(particle);
+    if (i === 0) heroParticle = particle;
   }
 }
 
 createParticles();
+
+// ============================================================
+// ONDAS TÉRMICAS — REPRESENTAÇÃO VISUAL DA DISSIPAÇÃO
+// ============================================================
+
+// As frentes esféricas são uma metáfora visual da energia dissipada
+// no meio. Não representam ondas mecânicas reais nem transporte
+// microscópico de calor resolvido espacialmente.
+
+const heatWaves = [];
+const heatWaveGeometry = new THREE.SphereGeometry(1, 28, 18);
+let heatEmissionClock = 0;
+
+function emitHeatWave(intensity) {
+  if (!heroParticle || intensity <= 0.001) return;
+
+  const material = new THREE.MeshBasicMaterial({
+    color: 0xffa34d,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.2 + 0.55 * intensity,
+    depthWrite: false
+  });
+
+  const wave = new THREE.Mesh(heatWaveGeometry, material);
+  wave.position.copy(heroParticle.sphere.position);
+  wave.scale.setScalar(0.8);
+  wave.renderOrder = 2;
+  scene.add(wave);
+
+  heatWaves.push({
+    mesh: wave,
+    age: 0,
+    lifetime: 2.2,
+    intensity
+  });
+}
+
+function updateHeatWaves(dt, model) {
+  // Escala visual logarítmica para que diferentes ordens de
+  // grandeza da potência possam ser percebidas na animação.
+
+  const pv = Number.isFinite(model.pv) ? Math.max(0, model.pv) : 0;
+
+  const heatIntensity = pv > 0
+    ? THREE.MathUtils.clamp(Math.log10(1 + pv) / 7, 0.04, 1)
+    : 0;
+
+  heatEmissionClock += dt;
+
+  const emissionInterval = 1.45 - 0.72 * heatIntensity;
+
+  if (heatEmissionClock >= emissionInterval) {
+    heatEmissionClock = 0;
+    emitHeatWave(heatIntensity);
+  }
+
+  for (let i = heatWaves.length - 1; i >= 0; i--) {
+    const wave = heatWaves[i];
+    wave.age += dt;
+
+    const progress = Math.min(1, wave.age / wave.lifetime);
+    const radius = 0.8 + progress * (13 + 5 * wave.intensity);
+
+    wave.mesh.position.copy(heroParticle.sphere.position);
+    wave.mesh.scale.setScalar(radius);
+
+    wave.mesh.material.opacity =
+      (1 - progress) * (0.2 + 0.55 * wave.intensity);
+
+    if (progress >= 1) {
+      scene.remove(wave.mesh);
+      wave.mesh.material.dispose();
+      heatWaves.splice(i, 1);
+    }
+  }
+}
 
 // ============================================================
 // CAMPO MAGNÉTICO ALTERNADO
@@ -330,7 +416,13 @@ function drawHUD(field, moment, phase) {
   hctx.lineWidth = 3;
 
   hctx.beginPath();
-  hctx.roundRect(0, 0, 440, 150, 12);
+
+  if (typeof hctx.roundRect === 'function') {
+    hctx.roundRect(0, 0, 440, 150, 12);
+  } else {
+    hctx.rect(0, 0, 440, 150);
+  }
+
   hctx.fill();
   hctx.stroke();
 
@@ -376,7 +468,6 @@ function calculateModel() {
 
   // Volume magnético da nanopartícula
   const radius = dNm * 1e-9 / 2;
-
   const V = (4 / 3) * Math.PI * Math.pow(radius, 3);
 
   // Conversão da anisotropia:
@@ -397,10 +488,21 @@ function calculateModel() {
   ) / (3 * KB * T);
 
   const omega = 2 * Math.PI * f;
-
   const omegaTau = omega * tauN;
-
   const phase = Math.atan(omegaTau);
+
+  // Fator de perdas da equação (3), calculado de forma estável
+  // também quando omega*tau é muito grande.
+
+  let lossFactor;
+
+  if (!Number.isFinite(omegaTau)) {
+    lossFactor = 0;
+  } else if (omegaTau > 1e150) {
+    lossFactor = 1 / omegaTau;
+  } else {
+    lossFactor = omegaTau / (1 + omegaTau * omegaTau);
+  }
 
   // Equação (3): potência volumétrica
   const pv = (
@@ -409,7 +511,7 @@ function calculateModel() {
     chi0 *
     H0 * H0 *
     f *
-    (omegaTau / (1 + omegaTau * omegaTau))
+    lossFactor
   );
 
   // Conversão para potência específica
@@ -477,10 +579,18 @@ function updateReadouts() {
   document.getElementById('frequencyVal').textContent = (m.f / 1e3).toFixed(0);
 
   document.getElementById('tauLabel').textContent = formatTime(m.tauN);
-  document.getElementById('omegaTauLabel').textContent = m.omegaTau.toExponential(2);
+  document.getElementById('omegaTauLabel').textContent =
+    Number.isFinite(m.omegaTau)
+      ? m.omegaTau.toExponential(2)
+      : '∞';
+
   document.getElementById('powerLabel').textContent = formatPower(m.pv);
-  document.getElementById('spaLabel').textContent = (m.spaWkg / 1000).toPrecision(3) + ' W/g';
-  document.getElementById('phaseLabel').textContent = (m.phase * 180 / Math.PI).toFixed(2) + '°';
+  document.getElementById('spaLabel').textContent =
+    (m.spaWkg / 1000).toPrecision(3) + ' W/g';
+
+  document.getElementById('phaseLabel').textContent =
+    (m.phase * 180 / Math.PI).toFixed(2) + '°';
+
   document.getElementById('chiLabel').textContent = m.chi0.toExponential(2);
 
   const eq = document.getElementById('equationDisplay');
@@ -550,23 +660,34 @@ function animate() {
   requestAnimationFrame(animate);
 
   const dt = Math.min(clock.getDelta(), 0.05);
-
   visualTime += dt;
 
   lastModel = calculateModel();
 
-  // Campo alternado
+  // Campo alternado: frequência visual reduzida, independente
+  // da frequência física usada na equação (3).
   const h = Math.cos(VISUAL_OMEGA * visualTime);
 
-  // Magnetização com atraso de fase
-  const m = Math.cos(
-    VISUAL_OMEGA * visualTime - lastModel.phase
-  ) / Math.sqrt(1 + lastModel.omegaTau ** 2);
+  // Resposta da magnetização com atraso de fase de Néel.
+  const omegaTauSafe = Number.isFinite(lastModel.omegaTau)
+    ? Math.max(0, lastModel.omegaTau)
+    : Infinity;
+
+  const responseAmplitude = Number.isFinite(omegaTauSafe)
+    ? 1 / Math.sqrt(1 + omegaTauSafe * omegaTauSafe)
+    : 0;
+
+  const phase = Number.isFinite(lastModel.phase)
+    ? lastModel.phase
+    : Math.PI / 2;
+
+  const m = responseAmplitude * Math.cos(
+    VISUAL_OMEGA * visualTime - phase
+  );
 
   const fieldSign = h >= 0 ? 1 : -1;
-  const momentSign = m >= 0 ? 1 : -1;
 
-  // Seta do campo magnético
+  // Seta do campo magnético.
   fieldArrow.visible = Math.abs(h) > 0.025;
 
   fieldArrow.scale.set(
@@ -580,38 +701,43 @@ function animate() {
     new THREE.Vector3(0, fieldSign, 0)
   );
 
-  // Momentos magnéticos das nanopartículas
+  // Oscilação das partículas ao longo do eixo do campo.
+  // A nanopartícula central tem deslocamento maior para facilitar
+  // a leitura visual; as demais acompanham com menor amplitude.
+
   particles.forEach(p => {
-    const localPhase =
-      visualTime * VISUAL_OMEGA - lastModel.phase;
-
-    const localM = Math.cos(localPhase);
-
+    const localPhase = VISUAL_OMEGA * visualTime - phase;
+    const localM = responseAmplitude * Math.cos(localPhase);
     const sign = localM >= 0 ? 1 : -1;
 
-    const amplitude = Math.max(
-      0.025,
-      Math.abs(localM) / Math.sqrt(1 + lastModel.omegaTau ** 2)
-    );
+    const displacement = p.isHero ? 4.2 : 1.25;
 
-    const v = new THREE.Vector3(0, sign, 0);
+    p.sphere.position.copy(p.basePosition);
+    p.sphere.position.y += displacement * localM;
 
     const q = new THREE.Quaternion().setFromUnitVectors(
       up,
-      v
+      new THREE.Vector3(0, sign, 0)
     );
 
     p.moment.quaternion.slerp(q, Math.min(1, dt * 7));
 
-    p.moment.scale.set(1, amplitude, 1);
+    p.moment.scale.set(
+      1,
+      Math.max(0.025, Math.abs(localM)),
+      1
+    );
 
     p.moment.position.copy(p.sphere.position);
   });
 
+  // Emissão e expansão das frentes térmicas em torno da partícula central.
+  updateHeatWaves(dt, lastModel);
+
   drawHUD(
     h,
     m,
-    lastModel.phase * 180 / Math.PI
+    phase * 180 / Math.PI
   );
 
   controls.update();
