@@ -1,1416 +1,1142 @@
 
-/* ============================================================
-   LAVINA — HIPERTERMIA MAGNÉTICA
-   Nanopartículas Fe3O4 e Co0.02Fe2.98O4
+"use strict";
 
-   Referência:
-   Control of Anisotropy and Magnetic Hyperthermia Effect
-   by Addition of Cobalt on Magnetite Nanoparticles
-   ACS Applied Materials & Interfaces (2025).
+// ============================================================
+// CONSTANTES FÍSICAS E PARÂMETROS DA TABELA 2
+// ============================================================
 
-   Equações (2) e (3) do artigo.
+const MU0 = 4 * Math.PI * 1e-7;
+const KB = 1.380649e-23;
+const TAU0 = 1e-10;
 
-   Modelo didático:
-   - Relaxação de Néel
-   - Resposta magnética linear
-   - Potência dissipada
-   - Animação esquemática das ondas térmicas
+// Densidade aproximada adotada para a conversão de Ms.
+// Hipótese do modelo: 5170 kg/m³ para os dois casos.
+const DENSITY = 5170;
 
-   A dinâmica visual não representa uma simulação atomística.
-   ============================================================ */
+// Conversões
+const ERG_CM3_TO_J_M3 = 0.1;
+const OE_TO_AM = 1000 / (4 * Math.PI);
 
-(() => {
-  "use strict";
-
-  // ----------------------------------------------------------
-  // 1. VERIFICAÇÃO INICIAL
-  // ----------------------------------------------------------
-
-  const container = document.getElementById("canvas-container");
-
-  if (!container) {
-    console.error("Não foi encontrado #canvas-container.");
-    return;
-  }
-
-  if (typeof THREE === "undefined") {
-    container.innerHTML =
-      '<div style="color:#ff7777;padding:20px">Erro: Three.js não foi carregado.</div>';
-    console.error("Three.js não foi carregado.");
-    return;
-  }
-
-  if (!THREE.OrbitControls) {
-    console.warn("OrbitControls não foi carregado.");
-  }
-
-  // ----------------------------------------------------------
-  // 2. CONSTANTES FÍSICAS
-  // ----------------------------------------------------------
-
-  const MU0 = 4 * Math.PI * 1e-7;
-  const KB = 1.380649e-23;
-
-  const RHO_MAGNETITE = 5170; // kg/m³
-  const RHO_G_CM3 = 5.17;    // g/cm³
-
-  const DEFAULT_TAU0 = 1e-10;
-
-  // 1 erg/cm³ = 0.1 J/m³
-  // 1 Oe = 1000/(4π) A/m
-
-  // ----------------------------------------------------------
-  // 3. DADOS EXPERIMENTAIS
-  // ----------------------------------------------------------
-
-  const EXPERIMENTAL_DATA = {
+// Valores de K_eff em unidades de 10^5 erg/cm³.
+// As incertezas são as reportadas na Tabela 2.
+const SAMPLES = {
     "0": {
-      name: "Fe3O4",
-      formula: "Fe₃O₄",
-
-      Ms0: 91.8,
-      MsUncertainty: 0.5,
-
-      alpha: 0.29,
-      alphaUncertainty: 0.01,
-
-      sigmaMT: 0.61,
-      MrMs: 0.87,
-      MrMsUncertainty: 0.02,
-      sigmaHc: 0.9,
-
-      Keff: {
-        MT: 4.1e5,
-        Mr: 1.2e5,
-        Hc: 3.1e5
-      },
-
-      KeffUncertainty: {
-        MT: null,
-        Mr: 0.1e5,
-        Hc: 0.7e5
-      },
-
-      diameter: 7.9
+        name: "Fe3O4",
+        formula: "Fe₃O₄",
+        diameter: 7.9,
+        ms: 91.8,
+        msError: 0.5,
+        alpha: 0.29,
+        methods: {
+            MT: { k: 4.1, error: 0.61 },
+            MR: { k: 1.2, error: 0.1 },
+            HC: { k: 3.1, error: 0.7 }
+        }
     },
 
     "0.020": {
-      name: "Co0.02Fe2.98O4",
-      formula: "Co₀,₀₂Fe₂,₉₈O₄",
-
-      Ms0: 100,
-      MsUncertainty: 1,
-
-      alpha: 0.40,
-      alphaUncertainty: 0.01,
-
-      sigmaMT: 0.74,
-      MrMs: 0.69,
-      MrMsUncertainty: 0.02,
-      sigmaHc: 0.9,
-
-      Keff: {
-        MT: 5.9e5,
-        Mr: 1.6e5,
-        Hc: 4.2e5
-      },
-
-      KeffUncertainty: {
-        MT: null,
-        Mr: 0.2e5,
-        Hc: 0.2e5
-      },
-
-      diameter: 8.4
+        name: "Co0.02Fe2.98O4",
+        formula: "Co₀.₀₂Fe₂.₉₈O₄",
+        diameter: 8.4,
+        ms: 100.0,
+        msError: 1.0,
+        alpha: 0.40,
+        methods: {
+            MT: { k: 5.9, error: 0.74 },
+            MR: { k: 1.6, error: 0.2 },
+            HC: { k: 4.2, error: 0.2 }
+        }
     }
-  };
+};
 
-  const METHOD_NAMES = {
+const METHOD_NAMES = {
     MT: "M(T)",
-    Mr: "Mr(T) / Ms",
-    Hc: "Hc(T)"
-  };
+    MR: "Mr(T)/Ms",
+    HC: "Hc(T)"
+};
 
-  // ----------------------------------------------------------
-  // 4. ELEMENTOS HTML
-  // ----------------------------------------------------------
+let selectedComposition = "0";
+let selectedMethod = "MT";
 
-  const compositionSelect =
-    document.getElementById("compositionSelect");
+let currentT = 300;
+let currentDiameter = 7.9;
+let currentH0 = 250;
+let currentFrequency = 624;
 
-  const anisotropyMethod =
-    document.getElementById("anisotropyMethod");
+let currentK = 4.1;
+let currentMsMass = 91.8;
+let currentTau = 0;
+let currentPower = 0;
+let currentSPA = 0;
+let currentPhase = 0;
+let currentChi = 0;
 
-  const tempSlider =
-    document.getElementById("tempSlider");
+let manualKEnabled = false;
 
-  const diameterSlider =
-    document.getElementById("diameterSlider");
+// ============================================================
+// ELEMENTOS DA INTERFACE
+// ============================================================
 
-  const fieldSlider =
-    document.getElementById("fieldSlider");
+const compositionSelect = document.getElementById("compositionSelect");
+const methodSelect = document.getElementById("methodSelect");
 
-  const frequencySlider =
-    document.getElementById("frequencySlider");
+const manualK = document.getElementById("manualK");
+const keffSlider = document.getElementById("keffSlider");
 
-  const tau0Input =
-    document.getElementById("tau0Input");
+const tempSlider = document.getElementById("tempSlider");
+const diameterSlider = document.getElementById("diameterSlider");
+const fieldSlider = document.getElementById("fieldSlider");
+const frequencySlider = document.getElementById("frequencySlider");
 
-  const recordBtn =
-    document.getElementById("recordBtn");
+const $ = id => document.getElementById(id);
 
-  // ----------------------------------------------------------
-  // 5. FUNÇÕES AUXILIARES
-  // ----------------------------------------------------------
-
-  function getValue(element, fallback) {
-    if (!element) return fallback;
-
-    const value = Number(element.value);
-
-    return Number.isFinite(value) ? value : fallback;
-  }
-
-  function setText(id, value) {
-    const element = document.getElementById(id);
-
-    if (element) {
-      element.textContent = value;
-    }
-  }
-
-  function formatScientific(value, digits = 2) {
-    if (!Number.isFinite(value)) {
-      return "∞";
-    }
-
-    return value.toExponential(digits);
-  }
-
-  function formatTime(value) {
-    if (!Number.isFinite(value)) return "∞";
-
-    if (value < 1e-12) {
-      return (value * 1e15).toPrecision(3) + " fs";
-    }
-
-    if (value < 1e-9) {
-      return (value * 1e12).toPrecision(3) + " ps";
-    }
-
-    if (value < 1e-6) {
-      return (value * 1e9).toPrecision(3) + " ns";
-    }
-
-    if (value < 1e-3) {
-      return (value * 1e6).toPrecision(3) + " µs";
-    }
-
-    if (value < 1) {
-      return (value * 1e3).toPrecision(3) + " ms";
-    }
-
-    return value.toPrecision(3) + " s";
-  }
-
-  function formatPower(value) {
+function formatNumber(value, digits = 2) {
     if (!Number.isFinite(value)) return "—";
 
-    if (value === 0) return "0 W/m³";
+    return value.toLocaleString("pt-BR", {
+        maximumFractionDigits: digits,
+        minimumFractionDigits: digits
+    });
+}
 
-    const a = Math.abs(value);
+function formatScientific(value, digits = 2) {
+    if (!Number.isFinite(value)) return "—";
+    if (value === 0) return "0";
 
-    if (a >= 1e6) {
-      return (value / 1e6).toPrecision(3) + " MW/m³";
-    }
+    const exponent = Math.floor(Math.log10(Math.abs(value)));
+    const mantissa = value / Math.pow(10, exponent);
 
-    if (a >= 1e3) {
-      return (value / 1e3).toPrecision(3) + " kW/m³";
-    }
+    return `${formatNumber(mantissa, digits)} × 10${toSuperscript(exponent)}`;
+}
 
-    if (a >= 1) {
-      return value.toPrecision(3) + " W/m³";
-    }
-
-    if (a >= 1e-3) {
-      return (value * 1e3).toPrecision(3) + " mW/m³";
-    }
-
-    return value.toExponential(2) + " W/m³";
-  }
-
-  // ----------------------------------------------------------
-  // 6. PARÂMETROS SELECIONADOS
-  // ----------------------------------------------------------
-
-  function getExperimentalParameters() {
-    const composition =
-      compositionSelect?.value || "0";
-
-    const method =
-      anisotropyMethod?.value || "MT";
-
-    const data =
-      EXPERIMENTAL_DATA[composition] ||
-      EXPERIMENTAL_DATA["0"];
-
-    return {
-      ...data,
-      composition,
-      method,
-      methodName: METHOD_NAMES[method],
-      KeffExperimental: data.Keff[method],
-      KeffSI: data.Keff[method] * 0.1,
-      KeffUncertainty: data.KeffUncertainty[method]
+function toSuperscript(number) {
+    const chars = {
+        "0": "⁰", "1": "¹", "2": "²", "3": "³",
+        "4": "⁴", "5": "⁵", "6": "⁶",
+        "7": "⁷", "8": "⁸", "9": "⁹",
+        "-": "⁻", "+": "⁺"
     };
-  }
 
-  // ----------------------------------------------------------
-  // 7. CÁLCULO DO MODELO FÍSICO
-  // ----------------------------------------------------------
+    return String(number).split("").map(c => chars[c] || c).join("");
+}
 
-  function calculateModel() {
-    const experimental = getExperimentalParameters();
+function getCurrentSample() {
+    return SAMPLES[selectedComposition];
+}
 
-    const T = getValue(tempSlider, 300);
-    const dNm = getValue(diameterSlider, experimental.diameter);
+function getCurrentK() {
+    if (manualKEnabled) {
+        return parseFloat(keffSlider.value);
+    }
 
-    const H0Oe = getValue(fieldSlider, 250);
-    const fKHz = getValue(frequencySlider, 624);
+    const sample = getCurrentSample();
+    return sample.methods[selectedMethod].k;
+}
 
-    const tau0 = getValue(tau0Input, DEFAULT_TAU0);
+// ============================================================
+// ATUALIZAÇÃO DOS PARÂMETROS DA TABELA
+// ============================================================
 
-    const f = fKHz * 1e3;
+function updateSampleParameters() {
+    const sample = getCurrentSample();
+    const method = sample.methods[selectedMethod];
 
-    // Volume esférico da nanopartícula.
-    const radius = dNm * 1e-9 / 2;
+    currentMsMass = sample.ms;
 
-    const V = (4 / 3) * Math.PI * radius ** 3;
+    if (!manualKEnabled) {
+        currentK = method.k;
+        keffSlider.value = method.k;
+    } else {
+        currentK = parseFloat(keffSlider.value);
+    }
 
-    // Anisotropia em J/m³.
-    const K = experimental.KeffSI;
+    currentDiameter = parseFloat(diameterSlider.value);
 
-    // Equação (2): relaxação de Néel.
-    const exponent = K * V / (KB * T);
+    $("keffTableValue").textContent =
+        `${formatNumber(method.k, 2)} × 10⁵ erg/cm³`;
 
-    const tauN = exponent > 700
-      ? Infinity
-      : tau0 * Math.exp(exponent);
+    $("keffUncertainty").textContent =
+        `± ${formatNumber(method.error, 2)} × 10⁵`;
 
-    // Magnetização de saturação:
-    // A Tabela 2 apresenta Ms(0).
-    // Utilizada aqui como aproximação constante.
-    // Não equivale a Ms medida em temperatura ambiente.
+    $("msValue").textContent =
+        `${formatNumber(sample.ms, 1)} ± ${formatNumber(sample.msError, 1)} emu/g`;
 
-    // Conversão:
-    // emu/g × g/cm³ × 1000 = A/m.
-    const MsVolume =
-      experimental.Ms0 * RHO_G_CM3 * 1000;
+    $("diameterTableValue").textContent =
+        `${formatNumber(sample.diameter, 1)} nm`;
 
-    // Campo magnético em A/m.
-    const H0 = H0Oe * 1000 / (4 * Math.PI);
+    $("alphaValue").textContent = formatNumber(sample.alpha, 2);
 
-    // Susceptibilidade inicial.
-    const chi0 =
-      MU0 * MsVolume ** 2 * V / (3 * KB * T);
+    $("keffSliderValue").textContent = formatNumber(currentK, 2);
 
-    const omega = 2 * Math.PI * f;
+    $("diameterValue").textContent =
+        formatNumber(currentDiameter, 1);
+
+    updatePhysics();
+}
+
+function updateManualKInterface() {
+    manualKEnabled = manualK.checked;
+    keffSlider.disabled = !manualKEnabled;
+
+    if (!manualKEnabled) {
+        updateSampleParameters();
+    } else {
+        currentK = parseFloat(keffSlider.value);
+        $("keffSliderValue").textContent = formatNumber(currentK, 2);
+        updatePhysics();
+    }
+}
+
+// ============================================================
+// MODELO FÍSICO
+// ============================================================
+
+function calculatePhysics() {
+    const diameterM = currentDiameter * 1e-9;
+    const radiusM = diameterM / 2;
+
+    const volume = (4 / 3) * Math.PI * Math.pow(radiusM, 3);
+
+    // K_eff: 10^5 erg/cm³ -> J/m³
+    const keffSI = currentK * 1e5 * ERG_CM3_TO_J_M3;
+
+    // Ms: emu/g -> A m²/kg; multiplicação pela densidade -> A/m
+    const msVolume = currentMsMass * DENSITY;
+
+    // Relaxação de Néel
+    const exponent = keffSI * volume / (KB * currentT);
+
+    let tauN;
+
+    if (exponent > 700) {
+        tauN = Infinity;
+    } else {
+        tauN = TAU0 * Math.exp(exponent);
+    }
+
+    // Campo e frequência
+    const H0 = currentH0 * OE_TO_AM;
+    const frequency = currentFrequency * 1e3;
+    const omega = 2 * Math.PI * frequency;
 
     const omegaTau = omega * tauN;
 
+    // Susceptibilidade inicial
+    const chi0 =
+        (MU0 * Math.pow(msVolume, 2) * volume) /
+        (3 * KB * currentT);
+
+    // Defasagem do momento magnético
     const phase = Math.atan(omegaTau);
 
-    // Fator de dissipação:
-    // x / (1 + x²), com proteção numérica.
-    let lossFactor = 0;
+    // Equação de dissipação
+    let powerVolume = 0;
 
-    if (Number.isFinite(omegaTau)) {
-      if (omegaTau > 1) {
-        const inverse = 1 / omegaTau;
+    if (Number.isFinite(tauN)) {
+        const denominator = 1 + omegaTau * omegaTau;
 
-        lossFactor =
-          inverse / (1 + inverse * inverse);
-      } else {
-        lossFactor =
-          omegaTau / (1 + omegaTau * omegaTau);
-      }
+        powerVolume =
+            MU0 * Math.PI * chi0 *
+            H0 * H0 * frequency *
+            omegaTau / denominator;
     }
 
-    // Equação (3): potência volumétrica.
-    const pv =
-      MU0 *
-      Math.PI *
-      chi0 *
-      H0 ** 2 *
-      f *
-      lossFactor;
-
-    // Estimativa de potência específica.
-    const spaWkg = pv / RHO_MAGNETITE;
-    const spaWg = spaWkg / 1000;
-
-    // Amplitude relativa da resposta linear.
-    const responseAmplitude =
-      Number.isFinite(omegaTau)
-        ? 1 / Math.sqrt(1 + omegaTau ** 2)
-        : 0;
+    // Conversão para potência específica (W/g)
+    const powerPerKg = powerVolume / DENSITY;
+    const spa = powerPerKg / 1000;
 
     return {
-      T,
-      dNm,
-      H0Oe,
-      H0,
-      f,
-      V,
-      K,
-      tau0,
-      tauN,
-      chi0,
-      omegaTau,
-      phase,
-      pv,
-      spaWkg,
-      spaWg,
-      lossFactor,
-      responseAmplitude,
-
-      Ms0: experimental.Ms0,
-      MsVolume,
-      KeffExperimental: experimental.KeffExperimental,
-      KeffUncertainty: experimental.KeffUncertainty,
-
-      composition: experimental.composition,
-      sampleName: experimental.name,
-      formula: experimental.formula,
-      method: experimental.method,
-      methodName: experimental.methodName,
-      alpha: experimental.alpha
+        volume,
+        keffSI,
+        msVolume,
+        tauN,
+        H0,
+        frequency,
+        omega,
+        omegaTau,
+        chi0,
+        phase,
+        powerVolume,
+        spa
     };
-  }
+}
 
-  // ----------------------------------------------------------
-  // 8. ATUALIZAÇÃO DOS PARÂMETROS EXPERIMENTAIS
-  // ----------------------------------------------------------
+function formatTime(tau) {
+    if (tau === Infinity) return "∞";
+    if (!Number.isFinite(tau)) return "—";
+    if (tau === 0) return "0 s";
 
-  function updateExperimentalReadouts() {
-    const p = getExperimentalParameters();
+    if (tau < 1e-12) return `${formatNumber(tau * 1e15, 2)} fs`;
+    if (tau < 1e-9) return `${formatNumber(tau * 1e12, 2)} ps`;
+    if (tau < 1e-6) return `${formatNumber(tau * 1e9, 2)} ns`;
+    if (tau < 1e-3) return `${formatNumber(tau * 1e6, 2)} µs`;
+    if (tau < 1) return `${formatNumber(tau * 1e3, 2)} ms`;
 
-    const uncertainty = p.KeffUncertainty === null
-      ? ""
-      : " ± " +
-        (p.KeffUncertainty / 1e5).toFixed(1);
+    return `${formatNumber(tau, 2)} s`;
+}
 
-    setText(
-      "msValue",
-      `${p.Ms0.toFixed(1)} ± ${p.MsUncertainty} emu/g`
-    );
+function updatePhysics() {
+    currentK = getCurrentK();
 
-    setText(
-      "keffValue",
-      `${(p.KeffExperimental / 1e5).toFixed(1)}${uncertainty} × 10⁵ erg/cm³`
-    );
+    const result = calculatePhysics();
 
-    setText(
-      "experimentalDiameter",
-      p.diameter.toFixed(1) + " nm"
-    );
+    currentTau = result.tauN;
+    currentPower = result.powerVolume;
+    currentSPA = result.spa;
+    currentPhase = result.phase;
+    currentChi = result.chi0;
 
-    setText(
-      "alphaValue",
-      `${p.alpha.toFixed(2)} ± ${p.alphaUncertainty.toFixed(2)}`
-    );
+    $("keffSliderValue").textContent = formatNumber(currentK, 2);
 
-    // Atualiza o diâmetro com o valor médio da composição.
-    if (diameterSlider) {
-      diameterSlider.value = p.diameter;
-    }
+    $("tauValue").textContent = formatTime(result.tauN);
+    $("omegaTauValue").textContent =
+        formatScientific(result.omegaTau, 2);
 
-    setText("diameterVal", p.diameter.toFixed(1));
+    $("phaseValue").textContent =
+        `${formatNumber(result.phase * 180 / Math.PI, 1)}°`;
 
-    updateReadouts();
-  }
+    $("chiValue").textContent =
+        formatScientific(result.chi0, 2);
 
-  // ----------------------------------------------------------
-  // 9. ATUALIZAÇÃO DOS RESULTADOS
-  // ----------------------------------------------------------
+    $("powerVolumeValue").textContent =
+        `${formatScientific(result.powerVolume, 2)} W/m³`;
 
-  function updateReadouts() {
-    const m = calculateModel();
+    $("spaValue").textContent =
+        `${formatNumber(result.spa, 3)} W/g`;
 
-    setText("tSliderVal", m.T.toFixed(0));
-    setText("diameterVal", m.dNm.toFixed(1));
-    setText("fieldVal", m.H0Oe.toFixed(0));
-    setText("frequencyVal", (m.f / 1e3).toFixed(0));
+    updateHUD();
+}
 
-    setText("tauLabel", formatTime(m.tauN));
+// ============================================================
+// THREE.JS — CENA PRINCIPAL
+// ============================================================
 
-    setText(
-      "omegaTauLabel",
-      formatScientific(m.omegaTau)
-    );
+const container = $("canvas-container");
 
-    setText(
-      "phaseLabel",
-      (m.phase * 180 / Math.PI).toFixed(2) + "°"
-    );
+if (!window.THREE) {
+    $("loading").textContent = "Erro: Three.js não foi carregado.";
+    throw new Error("Three.js indisponível.");
+}
 
-    setText(
-      "chiLabel",
-      formatScientific(m.chi0)
-    );
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1117);
+scene.fog = new THREE.FogExp2(0x0d1117, 0.006);
 
-    setText(
-      "powerLabel",
-      formatPower(m.pv)
-    );
-
-    setText(
-      "spaLabel",
-      Number.isFinite(m.spaWg)
-        ? m.spaWg.toPrecision(3) + " W/g"
-        : "—"
-    );
-
-    return m;
-  }
-
-  // ----------------------------------------------------------
-  // 10. EVENTOS DOS CONTROLES
-  // ----------------------------------------------------------
-
-  [
-    tempSlider,
-    diameterSlider,
-    fieldSlider,
-    frequencySlider,
-    tau0Input
-  ].forEach(element => {
-    element?.addEventListener("input", updateReadouts);
-    element?.addEventListener("change", updateReadouts);
-  });
-
-  compositionSelect?.addEventListener(
-    "change",
-    updateExperimentalReadouts
-  );
-
-  anisotropyMethod?.addEventListener(
-    "change",
-    updateExperimentalReadouts
-  );
-
-  // ----------------------------------------------------------
-  // 11. CENA THREE.JS
-  // ----------------------------------------------------------
-
-  const scene = new THREE.Scene();
-
-  scene.background = new THREE.Color(0x0d1117);
-  scene.fog = new THREE.FogExp2(0x0d1117, 0.002);
-
-  const camera = new THREE.PerspectiveCamera(
+const camera = new THREE.PerspectiveCamera(
     45,
     container.clientWidth / Math.max(container.clientHeight, 1),
     0.1,
     1000
-  );
+);
 
-  camera.position.set(72, 48, 105);
-  camera.lookAt(0, 0, 0);
+camera.position.set(52, 35, 85);
 
-  const renderer = new THREE.WebGLRenderer({
+const renderer = new THREE.WebGLRenderer({
     antialias: true,
-    alpha: false,
-    preserveDrawingBuffer: true
-  });
+    alpha: false
+});
 
-  renderer.setPixelRatio(
-    Math.min(window.devicePixelRatio || 1, 2)
-  );
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
 
-  renderer.setSize(
-    container.clientWidth,
-    container.clientHeight
-  );
+container.appendChild(renderer.domElement);
 
-  renderer.setClearColor(0x0d1117, 1);
+const controls = new THREE.OrbitControls(
+    camera,
+    renderer.domElement
+);
 
-  renderer.domElement.style.display = "block";
-  renderer.domElement.style.width = "100%";
-  renderer.domElement.style.height = "100%";
+controls.enableDamping = true;
+controls.dampingFactor = 0.055;
+controls.minDistance = 35;
+controls.maxDistance = 180;
 
-  container.appendChild(renderer.domElement);
+// ============================================================
+// ILUMINAÇÃO
+// ============================================================
 
-  let controls = null;
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
-  if (THREE.OrbitControls) {
-    controls = new THREE.OrbitControls(
-      camera,
-      renderer.domElement
-    );
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.3);
+keyLight.position.set(60, 80, 60);
+scene.add(keyLight);
 
-    controls.target.set(0, 0, 0);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.06;
-    controls.minDistance = 35;
-    controls.maxDistance = 220;
-    controls.update();
-  }
+const blueLight = new THREE.PointLight(0x287bff, 1.5, 150);
+blueLight.position.set(-35, 25, 20);
+scene.add(blueLight);
 
-  // ----------------------------------------------------------
-  // 12. ILUMINAÇÃO
-  // ----------------------------------------------------------
+const warmLight = new THREE.PointLight(0xff7139, 0.8, 100);
+warmLight.position.set(20, -20, -30);
+scene.add(warmLight);
 
-  scene.add(
-    new THREE.AmbientLight(0xffffff, 0.9)
-  );
+// ============================================================
+// VOLUME DE SIMULAÇÃO
+// ============================================================
 
-  const directionalLight =
-    new THREE.DirectionalLight(0xffffff, 1.4);
+const BOX_SIZE = 54;
 
-  directionalLight.position.set(50, 80, 100);
-  scene.add(directionalLight);
+const boxGeometry = new THREE.BoxGeometry(
+    BOX_SIZE,
+    BOX_SIZE,
+    BOX_SIZE
+);
 
-  const blueLight =
-    new THREE.PointLight(0x3388ff, 1.2, 180);
+const boxEdges = new THREE.EdgesGeometry(boxGeometry);
 
-  blueLight.position.set(-45, 25, 35);
-  scene.add(blueLight);
+const boxMaterial = new THREE.LineBasicMaterial({
+    color: 0x66788a,
+    transparent: true,
+    opacity: 0.55
+});
 
-  const orangeLight =
-    new THREE.PointLight(0xff7b35, 0.8, 100);
+const box = new THREE.LineSegments(boxEdges, boxMaterial);
+scene.add(box);
 
-  orangeLight.position.set(0, 0, 0);
-  scene.add(orangeLight);
+// Eixos discretos
+const axes = new THREE.AxesHelper(18);
+axes.material.transparent = true;
+axes.material.opacity = 0.35;
+scene.add(axes);
 
-  // ----------------------------------------------------------
-  // 13. CAIXA DE VISUALIZAÇÃO
-  // ----------------------------------------------------------
+// ============================================================
+// CAMPO MAGNÉTICO ALTERNADO
+// ============================================================
 
-  const boxGeometry =
-    new THREE.BoxGeometry(62, 62, 62);
+const fieldOrigin = new THREE.Vector3(0, -34, 0);
 
-  const box = new THREE.LineSegments(
-    new THREE.EdgesGeometry(boxGeometry),
-    new THREE.LineBasicMaterial({
-      color: 0x526174,
-      transparent: true,
-      opacity: 0.45
+const fieldArrow = new THREE.ArrowHelper(
+    new THREE.Vector3(0, 1, 0),
+    fieldOrigin,
+    27,
+    0x58a6ff,
+    5,
+    2.8
+);
+
+scene.add(fieldArrow);
+
+const fieldLinePoints = [
+    new THREE.Vector3(0, -31, 0),
+    new THREE.Vector3(0, 31, 0)
+];
+
+const fieldLineGeometry = new THREE.BufferGeometry()
+    .setFromPoints(fieldLinePoints);
+
+const fieldLine = new THREE.Line(
+    fieldLineGeometry,
+    new THREE.LineDashedMaterial({
+        color: 0x58a6ff,
+        dashSize: 2,
+        gapSize: 2,
+        transparent: true,
+        opacity: 0.4
     })
-  );
+);
 
-  scene.add(box);
+fieldLine.computeLineDistances();
+scene.add(fieldLine);
 
-  // ----------------------------------------------------------
-  // 14. VETORES
-  // ----------------------------------------------------------
+// ============================================================
+// NANOPARTÍCULAS
+// ============================================================
 
-  function createArrow(color, length, radius = 0.5) {
+const PARTICLE_COUNT = 15;
+const PARTICLE_RADIUS = 2.1;
+
+const sphereGeometry = new THREE.SphereGeometry(
+    PARTICLE_RADIUS,
+    32,
+    24
+);
+
+const sphereMaterial = new THREE.MeshStandardMaterial({
+    color: 0x428bd2,
+    roughness: 0.28,
+    metalness: 0.32,
+    emissive: 0x102b4a,
+    emissiveIntensity: 0.35
+});
+
+const particles = [];
+
+const momentMaterial = new THREE.MeshStandardMaterial({
+    color: 0x2ea043,
+    roughness: 0.3,
+    metalness: 0.25,
+    emissive: 0x123d20,
+    emissiveIntensity: 0.25
+});
+
+function createMomentArrow() {
     const group = new THREE.Group();
 
-    const material = new THREE.MeshStandardMaterial({
-      color,
-      emissive: color,
-      emissiveIntensity: 0.25,
-      metalness: 0.15,
-      roughness: 0.35
-    });
-
-    const shaftLength = length * 0.72;
-    const headLength = length * 0.28;
-
     const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        radius,
-        radius,
-        shaftLength,
-        16
-      ),
-      material
+        new THREE.CylinderGeometry(0.22, 0.22, 6.5, 12),
+        momentMaterial
     );
-
-    shaft.position.y = shaftLength / 2;
 
     const head = new THREE.Mesh(
-      new THREE.ConeGeometry(
-        radius * 2.8,
-        headLength,
-        20
-      ),
-      material
+        new THREE.ConeGeometry(0.85, 2.1, 16),
+        momentMaterial
     );
 
-    head.position.y =
-      shaftLength + headLength / 2;
+    shaft.position.y = 0;
+    head.position.y = 4.25;
 
     group.add(shaft);
     group.add(head);
 
     return group;
-  }
+}
 
-  const Y_AXIS = new THREE.Vector3(0, 1, 0);
+// ============================================================
+// ONDAS DE DISSIPAÇÃO TÉRMICA
+// ============================================================
 
-  // ----------------------------------------------------------
-  // 15. NANOPARTÍCULAS
-  // ----------------------------------------------------------
+const heatWaveGeometry = new THREE.RingGeometry(0.88, 1.0, 48);
 
-  const particles = [];
-
-  const particleGeometry =
-    new THREE.SphereGeometry(2.5, 32, 24);
-
-  const particleMaterial =
-    new THREE.MeshStandardMaterial({
-      color: 0x8da5bd,
-      metalness: 0.45,
-      roughness: 0.25
-    });
-
-  const heroMaterial =
-    new THREE.MeshStandardMaterial({
-      color: 0xb3c9dc,
-      metalness: 0.5,
-      roughness: 0.2,
-      emissive: 0x18344c,
-      emissiveIntensity: 0.55
-    });
-
-  let heroParticle = null;
-
-  function createParticle(position, isHero = false) {
-    const sphere = new THREE.Mesh(
-      particleGeometry,
-      isHero ? heroMaterial : particleMaterial
-    );
-
-    sphere.position.copy(position);
-
-    if (isHero) {
-      sphere.scale.setScalar(1.8);
-    }
-
-    scene.add(sphere);
-
-    const moment = createArrow(
-      0x35d07f,
-      isHero ? 17 : 10,
-      isHero ? 0.65 : 0.4
-    );
-
-    moment.position.copy(position);
-    scene.add(moment);
-
-    const particle = {
-      sphere,
-      moment,
-      basePosition: position.clone(),
-      isHero
-    };
-
-    particles.push(particle);
-
-    if (isHero) {
-      heroParticle = particle;
-    }
-
-    return particle;
-  }
-
-  createParticle(
-    new THREE.Vector3(0, 0, 0),
-    true
-  );
-
-  const secondaryPositions = [
-    [-19, 13, -13],
-    [19, 15, 12],
-    [-18, -15, 15],
-    [18, -14, -15],
-    [-8, 23, 16],
-    [10, -23, -12],
-    [25, 3, -4],
-    [-25, 2, 5],
-    [8, 8, 25],
-    [-9, -8, -25],
-    [23, 19, -19],
-    [-22, -20, -18],
-    [0, 24, 0],
-    [0, -24, 0]
-  ];
-
-  secondaryPositions.forEach(position => {
-    createParticle(
-      new THREE.Vector3(
-        position[0],
-        position[1],
-        position[2]
-      )
-    );
-  });
-
-  // ----------------------------------------------------------
-  // 16. CAMPO MAGNÉTICO ALTERNADO
-  // ----------------------------------------------------------
-
-  const fieldArrow = createArrow(
-    0x58a6ff,
-    30,
-    0.85
-  );
-
-  scene.add(fieldArrow);
-
-  const fieldLineGeometry =
-    new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, -36, 0),
-      new THREE.Vector3(0, 36, 0)
-    ]);
-
-  const fieldLine = new THREE.Line(
-    fieldLineGeometry,
-    new THREE.LineDashedMaterial({
-      color: 0x58a6ff,
-      dashSize: 2,
-      gapSize: 1.5,
-      transparent: true,
-      opacity: 0.5
-    })
-  );
-
-  fieldLine.computeLineDistances();
-  scene.add(fieldLine);
-
-  // ----------------------------------------------------------
-  // 17. RÓTULO DO CAMPO
-  // ----------------------------------------------------------
-
-  const labelCanvas = document.createElement("canvas");
-
-  labelCanvas.width = 512;
-  labelCanvas.height = 128;
-
-  const labelContext = labelCanvas.getContext("2d");
-
-  labelContext.fillStyle = "#58a6ff";
-  labelContext.font = "bold 48px Arial";
-  labelContext.textAlign = "center";
-
-  labelContext.fillText(
-    "H(t) — CAMPO AC",
-    256,
-    78
-  );
-
-  const labelTexture =
-    new THREE.CanvasTexture(labelCanvas);
-
-  const fieldLabel = new THREE.Sprite(
-    new THREE.SpriteMaterial({
-      map: labelTexture,
-      transparent: true,
-      depthTest: false
-    })
-  );
-
-  fieldLabel.scale.set(38, 9, 1);
-  fieldLabel.position.set(0, 41, 0);
-
-  scene.add(fieldLabel);
-
-  // ----------------------------------------------------------
-  // 18. ONDAS TÉRMICAS
-  // ----------------------------------------------------------
-
-  const heatWaves = [];
-
-  const waveGeometry =
-    new THREE.SphereGeometry(1, 36, 24);
-
-  const WAVE_LIFETIME = 2.5;
-
-  let emissionClock = 0;
-
-  function emitHeatWave(intensity) {
+function createHeatWave() {
     const material = new THREE.MeshBasicMaterial({
-      color: 0xff9c45,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.25 + 0.65 * intensity,
-      depthWrite: false
+        color: 0xff7139,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        depthWrite: false
     });
 
-    const wave = new THREE.Mesh(
-      waveGeometry,
-      material
+    const ring = new THREE.Mesh(heatWaveGeometry, material);
+
+    // Plano horizontal ao redor da nanopartícula
+    ring.rotation.x = -Math.PI / 2;
+    ring.visible = false;
+
+    return {
+        mesh: ring,
+        age: 0,
+        active: false,
+        duration: 1.8,
+        initialScale: 1
+    };
+}
+
+function createParticlePosition(index) {
+    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+    const y = 1 - (index / (PARTICLE_COUNT - 1)) * 2;
+    const radius = Math.sqrt(1 - y * y);
+    const theta = goldenAngle * index;
+
+    const spread = 20;
+
+    return new THREE.Vector3(
+        Math.cos(theta) * radius * spread,
+        y * spread,
+        Math.sin(theta) * radius * spread
+    );
+}
+
+function createParticle(index) {
+    const position = createParticlePosition(index);
+
+    const mesh = new THREE.Mesh(
+        sphereGeometry,
+        sphereMaterial.clone()
     );
 
-    wave.position.copy(heroParticle.sphere.position);
-    wave.scale.setScalar(1);
+    mesh.position.copy(position);
+    scene.add(mesh);
 
-    scene.add(wave);
+    const arrow = createMomentArrow();
+    arrow.position.copy(position);
+    scene.add(arrow);
 
-    heatWaves.push({
-      mesh: wave,
-      age: 0,
-      intensity
+    const initialDirection = new THREE.Vector3(
+        Math.random() - 0.5,
+        Math.random() - 0.5,
+        Math.random() - 0.5
+    ).normalize();
+
+    const waves = [];
+
+    for (let i = 0; i < 3; i++) {
+        const wave = createHeatWave();
+        wave.mesh.position.copy(position);
+        scene.add(wave.mesh);
+        waves.push(wave);
+    }
+
+    particles.push({
+        mesh,
+        arrow,
+        position,
+        initialDirection,
+        currentDirection: initialDirection.clone(),
+        waves,
+        emissionTimer: Math.random() * 1.2,
+        pulseOffset: Math.random() * Math.PI * 2
     });
-  }
+}
 
-  function updateHeatWaves(dt, model) {
-    const power = Number.isFinite(model.pv)
-      ? Math.max(0, model.pv)
-      : 0;
+for (let i = 0; i < PARTICLE_COUNT; i++) {
+    createParticle(i);
+}
 
-    const intensity = power > 0
-      ? THREE.MathUtils.clamp(
-          Math.log10(1 + power) / 7,
-          0.08,
-          1
-        )
-      : 0;
+// ============================================================
+// HUD — PAINEL FLUTUANTE NO ESTILO DA REFERÊNCIA
+// ============================================================
 
-    emissionClock += dt;
+const hudScene = new THREE.Scene();
 
-    const interval = 1.4 - 0.65 * intensity;
+let hudWidth = 300;
+let hudHeight = 185;
 
-    if (emissionClock >= interval) {
-      emissionClock = 0;
-      emitHeatWave(intensity);
-    }
+const hudCanvas = document.createElement("canvas");
+hudCanvas.width = hudWidth * 2;
+hudCanvas.height = hudHeight * 2;
 
-    for (let i = heatWaves.length - 1; i >= 0; i--) {
-      const wave = heatWaves[i];
+const hudCtx = hudCanvas.getContext("2d");
+const hudTexture = new THREE.CanvasTexture(hudCanvas);
 
-      wave.age += dt;
+const hudMaterial = new THREE.SpriteMaterial({
+    map: hudTexture,
+    transparent: true,
+    depthTest: false
+});
 
-      const progress = Math.min(
-        wave.age / WAVE_LIFETIME,
-        1
-      );
+const hudSprite = new THREE.Sprite(hudMaterial);
+hudSprite.scale.set(hudWidth, hudHeight, 1);
+hudScene.add(hudSprite);
 
-      const radius =
-        1 + progress * (18 + 9 * wave.intensity);
-
-      wave.mesh.position.copy(
-        heroParticle.sphere.position
-      );
-
-      wave.mesh.scale.setScalar(radius);
-
-      wave.mesh.material.opacity =
-        (1 - progress) *
-        (0.25 + 0.65 * wave.intensity);
-
-      if (progress >= 1) {
-        scene.remove(wave.mesh);
-        wave.mesh.material.dispose();
-
-        heatWaves.splice(i, 1);
-      }
-    }
-
-    orangeLight.intensity =
-      0.2 + 1.2 * intensity;
-  }
-
-  // ----------------------------------------------------------
-  // 19. HUD — INFORMAÇÕES DA ANIMAÇÃO
-  // ----------------------------------------------------------
-
-  const hudScene = new THREE.Scene();
-
-  const hudCamera = new THREE.OrthographicCamera(
+const hudCamera = new THREE.OrthographicCamera(
     -container.clientWidth / 2,
     container.clientWidth / 2,
     container.clientHeight / 2,
     -container.clientHeight / 2,
     0.1,
     10
-  );
+);
 
-  hudCamera.position.z = 5;
+hudCamera.position.z = 5;
 
-  const hudCanvas = document.createElement("canvas");
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+}
 
-  hudCanvas.width = 440;
-  hudCanvas.height = 150;
+function updateHUD() {
+    const ctx = hudCtx;
+    const w = hudCanvas.width;
+    const h = hudCanvas.height;
 
-  const hctx = hudCanvas.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
 
-  const hudTexture =
-    new THREE.CanvasTexture(hudCanvas);
+    roundRect(ctx, 4, 4, w - 8, h - 8, 20);
 
-  const hudSprite = new THREE.Sprite(
-    new THREE.SpriteMaterial({
-      map: hudTexture,
-      transparent: true,
-      depthTest: false
-    })
-  );
+    ctx.fillStyle = "rgba(13,17,23,0.91)";
+    ctx.fill();
 
-  hudSprite.scale.set(440, 150, 1);
-  hudScene.add(hudSprite);
+    ctx.strokeStyle = "#58a6ff";
+    ctx.lineWidth = 5;
+    ctx.stroke();
 
-  // ----------------------------------------------------------
-  // 20. MARCA LAVINA
-  // ----------------------------------------------------------
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
 
-  const wmCanvas = document.createElement("canvas");
+    ctx.fillStyle = "#58a6ff";
+    ctx.font = "bold 30px Segoe UI";
+    ctx.fillText("HIPERTERMIA MAGNÉTICA", 28, 24);
 
-  wmCanvas.width = 340;
-  wmCanvas.height = 90;
-
-  const wctx = wmCanvas.getContext("2d");
-
-  wctx.fillStyle = "#ffffff";
-  wctx.font = "bold 32px Arial";
-  wctx.textAlign = "right";
-  wctx.fillText("LAVINA", 330, 36);
-
-  wctx.fillStyle = "#58a6ff";
-  wctx.font = "bold 14px Arial";
-  wctx.fillText("IFGW • UNICAMP", 330, 62);
-
-  const wmTexture =
-    new THREE.CanvasTexture(wmCanvas);
-
-  const wmSprite = new THREE.Sprite(
-    new THREE.SpriteMaterial({
-      map: wmTexture,
-      transparent: true,
-      depthTest: false
-    })
-  );
-
-  wmSprite.scale.set(250, 66, 1);
-  hudScene.add(wmSprite);
-
-  // ----------------------------------------------------------
-  // 21. DESENHO DO HUD
-  // ----------------------------------------------------------
-
-  function drawHUD(h, m, phase) {
-    hctx.clearRect(0, 0, 440, 150);
-
-    hctx.fillStyle = "rgba(13,17,23,0.92)";
-    hctx.strokeStyle = "#58a6ff";
-    hctx.lineWidth = 3;
-
-    hctx.beginPath();
-
-    if (typeof hctx.roundRect === "function") {
-      hctx.roundRect(1, 1, 438, 148, 12);
-    } else {
-      hctx.rect(1, 1, 438, 148);
-    }
-
-    hctx.fill();
-    hctx.stroke();
-
-    hctx.textAlign = "left";
-
-    hctx.fillStyle = "#58a6ff";
-    hctx.font = "bold 21px Arial";
-
-    hctx.fillText(
-      "CAMPO MAGNÉTICO ALTERNADO",
-      18,
-      34
+    ctx.fillStyle = "#c9d1d9";
+    ctx.font = "23px Segoe UI";
+    ctx.fillText(
+        `H(t) = ${formatNumber(currentH0, 0)} Oe`,
+        28, 75
     );
 
-    hctx.fillStyle = "#c9d1d9";
-    hctx.font = "17px Arial";
-
-    hctx.fillText(
-      "H(t) ∝ " + h.toFixed(2),
-      18,
-      68
+    ctx.fillStyle = "#2ea043";
+    ctx.fillText(
+        `M(t) — φ = ${formatNumber(currentPhase * 180 / Math.PI, 1)}°`,
+        28, 112
     );
 
-    hctx.fillStyle = "#35d07f";
-
-    hctx.fillText(
-      "M(t) ∝ " + m.toFixed(2) +
-      "   |   φ = " + phase.toFixed(1) + "°",
-      18,
-      101
-    );
-
-    hctx.fillStyle = "#8b949e";
-    hctx.font = "13px Arial";
-
-    hctx.fillText(
-      "Animação esquemática — tempo visual desacelerado",
-      18,
-      130
+    ctx.fillStyle = "#ff9b62";
+    ctx.fillText(
+        `SPA = ${formatNumber(currentSPA, 3)} W/g`,
+        28, 149
     );
 
     hudTexture.needsUpdate = true;
-  }
+}
 
-  // ----------------------------------------------------------
-  // 22. POSICIONAMENTO DO HUD
-  // ----------------------------------------------------------
+function updateHUDLayout() {
+    const width = container.clientWidth;
+    const height = container.clientHeight;
 
-  function layoutHUD() {
-    const w = container.clientWidth;
-    const h = container.clientHeight;
-
-    hudCamera.left = -w / 2;
-    hudCamera.right = w / 2;
-    hudCamera.top = h / 2;
-    hudCamera.bottom = -h / 2;
-
+    hudCamera.left = -width / 2;
+    hudCamera.right = width / 2;
+    hudCamera.top = height / 2;
+    hudCamera.bottom = -height / 2;
     hudCamera.updateProjectionMatrix();
 
-    const scale = Math.min(1, w / 850);
+    const scale = Math.min(1, width / 850);
 
     hudSprite.scale.set(
-      440 * scale,
-      150 * scale,
-      1
+        hudWidth * scale,
+        hudHeight * scale,
+        1
     );
 
     hudSprite.position.set(
-      -w / 2 + 230 * scale + 14,
-      h / 2 - 85 * scale - 14,
-      0
-    );
-
-    wmSprite.position.set(
-      w / 2 - 135 * scale - 12,
-      h / 2 - 42 * scale - 12,
-      0
-    );
-  }
-
-  layoutHUD();
-
-  // ----------------------------------------------------------
-  // 23. ACORDEÃO DE INFORMAÇÕES
-  // ----------------------------------------------------------
-
-  const infoButton =
-    document.getElementById("infoToggleBtn");
-
-  infoButton?.addEventListener("click", () => {
-    const infoBox =
-      document.getElementById("infoBox");
-
-    const icon =
-      document.getElementById("accordionIcon");
-
-    if (!infoBox) return;
-
-    if (infoBox.style.maxHeight) {
-      infoBox.style.maxHeight = null;
-
-      if (icon) icon.textContent = "+";
-    } else {
-      infoBox.style.maxHeight =
-        infoBox.scrollHeight + "px";
-
-      if (icon) icon.textContent = "−";
-    }
-  });
-
-  // ----------------------------------------------------------
-  // 24. ANIMAÇÃO
-  // ----------------------------------------------------------
-
-  const clock = new THREE.Clock();
-
-  let visualTime = 0;
-
-  // Frequência visual desacelerada.
-  // Não altera a frequência física usada nas equações.
-  const VISUAL_OMEGA = 1.35;
-
-  function animate() {
-    requestAnimationFrame(animate);
-
-    const dt = Math.min(clock.getDelta(), 0.05);
-
-    visualTime += dt;
-
-    const model = calculateModel();
-
-    // Campo magnético alternado.
-    const h = Math.cos(
-      VISUAL_OMEGA * visualTime
-    );
-
-    // Magnetização defasada.
-    const phase = model.phase;
-
-    const m =
-      model.responseAmplitude *
-      Math.cos(
-        VISUAL_OMEGA * visualTime - phase
-      );
-
-    // Seta azul do campo aplicado.
-    const fieldSign = h >= 0 ? 1 : -1;
-
-    fieldArrow.visible =
-      Math.abs(h) > 0.015;
-
-    fieldArrow.quaternion.setFromUnitVectors(
-      Y_AXIS,
-      new THREE.Vector3(0, fieldSign, 0)
-    );
-
-    fieldArrow.scale.set(
-      1,
-      Math.max(0.025, Math.abs(h)),
-      1
-    );
-
-    // Resposta das partículas e dos momentos magnéticos.
-    particles.forEach(particle => {
-      const localM =
-        model.responseAmplitude *
-        Math.cos(
-          VISUAL_OMEGA * visualTime - phase
-        );
-
-      const displacement =
-        particle.isHero ? 4 : 1;
-
-      // Oscilação visual da nanopartícula.
-      particle.sphere.position.copy(
-        particle.basePosition
-      );
-
-      particle.sphere.position.y +=
-        displacement * localM;
-
-      // Vetor de magnetização.
-      const direction = new THREE.Vector3(
-        0,
-        localM >= 0 ? 1 : -1,
+        -width / 2 + (hudWidth * scale) / 2 + 20,
+        height / 2 - (hudHeight * scale) / 2 - 20,
         0
-      );
-
-      const targetQuaternion =
-        new THREE.Quaternion().setFromUnitVectors(
-          Y_AXIS,
-          direction
-        );
-
-      particle.moment.quaternion.copy(
-        targetQuaternion
-      );
-
-      particle.moment.scale.set(
-        1,
-        Math.max(0.025, Math.abs(localM)),
-        1
-      );
-
-      particle.moment.position.copy(
-        particle.sphere.position
-      );
-    });
-
-    // Ondas térmicas.
-    updateHeatWaves(dt, model);
-
-    // HUD.
-    drawHUD(
-      h,
-      m,
-      phase * 180 / Math.PI
     );
+}
 
-    if (controls) {
-      controls.update();
+updateHUD();
+updateHUDLayout();
+
+// ============================================================
+// MARCA LAVINA
+// ============================================================
+
+const watermarkCanvas = document.createElement("canvas");
+watermarkCanvas.width = 420;
+watermarkCanvas.height = 120;
+
+const watermarkCtx = watermarkCanvas.getContext("2d");
+const watermarkTexture = new THREE.CanvasTexture(watermarkCanvas);
+
+const watermark = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+        map: watermarkTexture,
+        transparent: true,
+        depthTest: false
+    })
+);
+
+watermark.scale.set(210, 60, 1);
+hudScene.add(watermark);
+
+function drawWatermark() {
+    const ctx = watermarkCtx;
+
+    ctx.clearRect(0, 0, 420, 120);
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 62px Segoe UI";
+    ctx.fillText("LAVINA", 405, 5);
+
+    ctx.fillStyle = "#58a6ff";
+    ctx.font = "bold 25px Segoe UI";
+    ctx.fillText("IFGW • UNICAMP", 405, 76);
+
+    watermarkTexture.needsUpdate = true;
+}
+
+function updateWatermarkLayout() {
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    const scale = Math.min(1, width / 850);
+
+    watermark.scale.set(210 * scale, 60 * scale, 1);
+
+    watermark.position.set(
+        width / 2 - 115 * scale,
+        height / 2 - 45 * scale,
+        0
+    );
+}
+
+drawWatermark();
+updateWatermarkLayout();
+
+// ============================================================
+// ANIMAÇÃO DAS ONDAS TÉRMICAS
+// ============================================================
+
+function emitHeatWave(particle) {
+    const wave = particle.waves.find(w => !w.active);
+
+    if (!wave) return;
+
+    wave.active = true;
+    wave.age = 0;
+    wave.mesh.visible = true;
+    wave.mesh.position.copy(particle.position);
+    wave.mesh.scale.setScalar(0.7);
+    wave.mesh.material.opacity = 0.8;
+}
+
+function updateHeatWaves(particle, delta, heatIntensity) {
+    const emissionInterval =
+        THREE.MathUtils.lerp(1.7, 0.38, heatIntensity);
+
+    particle.emissionTimer -= delta;
+
+    if (particle.emissionTimer <= 0) {
+        emitHeatWave(particle);
+        particle.emissionTimer = emissionInterval;
     }
 
-    // Renderização da cena.
-    renderer.clear();
-    renderer.render(scene, camera);
+    for (const wave of particle.waves) {
+        if (!wave.active) continue;
 
-    // HUD sobre a cena 3D.
-    renderer.clearDepth();
-    renderer.render(hudScene, hudCamera);
-  }
+        wave.age += delta;
 
-  // ----------------------------------------------------------
-  // 25. REDIMENSIONAMENTO
-  // ----------------------------------------------------------
+        const progress = wave.age / wave.duration;
 
-  function resize() {
-    const width = container.clientWidth;
-    const height = Math.max(
-      container.clientHeight,
-      1
+        if (progress >= 1) {
+            wave.active = false;
+            wave.mesh.visible = false;
+            wave.mesh.material.opacity = 0;
+            continue;
+        }
+
+        const expansion = 0.7 + progress * 5.2;
+        wave.mesh.scale.setScalar(expansion);
+
+        wave.mesh.material.opacity =
+            0.75 * Math.pow(1 - progress, 1.3) *
+            Math.min(1, heatIntensity * 2.5 + 0.15);
+    }
+}
+
+// ============================================================
+// DINÂMICA VISUAL DOS MOMENTOS MAGNÉTICOS
+// ============================================================
+
+const UP_AXIS = new THREE.Vector3(0, 1, 0);
+
+const clock = new THREE.Clock();
+
+let visualTime = 0;
+
+// A frequência visual é propositalmente desacelerada.
+// Ela não altera a frequência física usada no cálculo.
+const VISUAL_OMEGA = 2.2;
+
+function updateParticleAnimation(particle, delta) {
+    const physical = calculatePhysics();
+
+    const visualField = Math.sin(VISUAL_OMEGA * visualTime);
+
+    const visualPhase = Number.isFinite(physical.phase)
+        ? physical.phase
+        : Math.PI / 2;
+
+    const responseAmplitude =
+        1 / Math.sqrt(1 + physical.omegaTau * physical.omegaTau);
+
+    const visualMagnetization =
+        responseAmplitude *
+        Math.sin(VISUAL_OMEGA * visualTime - visualPhase);
+
+    const target = new THREE.Vector3(
+        particle.initialDirection.x * 0.48,
+        visualMagnetization,
+        particle.initialDirection.z * 0.48
+    ).normalize();
+
+    particle.currentDirection.lerp(target, 1 - Math.exp(-delta * 3.5));
+    particle.currentDirection.normalize();
+
+    particle.arrow.position.copy(particle.position);
+
+    particle.arrow.quaternion.setFromUnitVectors(
+        UP_AXIS,
+        particle.currentDirection
     );
+
+    // Campo alternado: seta muda de sentido e comprimento.
+    const fieldDirection = new THREE.Vector3(
+        0,
+        Math.sign(visualField || 1),
+        0
+    );
+
+    fieldArrow.setDirection(fieldDirection);
+
+    const fieldLength = 9 + 18 * Math.abs(visualField);
+    fieldArrow.setLength(fieldLength, 4.5, 2.5);
+
+    // Pulsação luminosa da partícula associada à dissipação.
+    const pulse =
+        0.5 + 0.5 * Math.sin(
+            VISUAL_OMEGA * visualTime * 2 + particle.pulseOffset
+        );
+
+    const thermalIntensity = Math.min(
+        1,
+        Math.max(0, Math.log10(1 + Math.max(currentSPA, 0)) / 3)
+    );
+
+    particle.mesh.material.emissive.setRGB(
+        0.05 + 0.55 * thermalIntensity * pulse,
+        0.08 + 0.12 * thermalIntensity * pulse,
+        0.15
+    );
+
+    particle.mesh.material.emissiveIntensity =
+        0.3 + 1.1 * thermalIntensity * pulse;
+
+    particle.mesh.scale.setScalar(
+        1 + 0.035 * pulse * thermalIntensity
+    );
+
+    updateHeatWaves(particle, delta, thermalIntensity);
+}
+
+// ============================================================
+// ATUALIZAÇÃO DOS CONTROLES
+// ============================================================
+
+compositionSelect.addEventListener("change", () => {
+    selectedComposition = compositionSelect.value;
+
+    const sample = getCurrentSample();
+
+    diameterSlider.value = sample.diameter;
+    $("diameterValue").textContent =
+        formatNumber(sample.diameter, 1);
+
+    updateSampleParameters();
+});
+
+methodSelect.addEventListener("change", () => {
+    selectedMethod = methodSelect.value;
+
+    if (!manualKEnabled) {
+        updateSampleParameters();
+    } else {
+        const method = getCurrentSample().methods[selectedMethod];
+
+        $("keffTableValue").textContent =
+            `${formatNumber(method.k, 2)} × 10⁵ erg/cm³`;
+
+        $("keffUncertainty").textContent =
+            `± ${formatNumber(method.error, 2)} × 10⁵`;
+    }
+});
+
+manualK.addEventListener("change", updateManualKInterface);
+
+keffSlider.addEventListener("input", () => {
+    currentK = parseFloat(keffSlider.value);
+    $("keffSliderValue").textContent = formatNumber(currentK, 2);
+    updatePhysics();
+});
+
+tempSlider.addEventListener("input", () => {
+    currentT = parseFloat(tempSlider.value);
+    $("tempValue").textContent = formatNumber(currentT, 0);
+    updatePhysics();
+});
+
+diameterSlider.addEventListener("input", () => {
+    currentDiameter = parseFloat(diameterSlider.value);
+    $("diameterValue").textContent =
+        formatNumber(currentDiameter, 1);
+    updatePhysics();
+});
+
+fieldSlider.addEventListener("input", () => {
+    currentH0 = parseFloat(fieldSlider.value);
+    $("fieldValue").textContent = formatNumber(currentH0, 0);
+    updatePhysics();
+});
+
+frequencySlider.addEventListener("input", () => {
+    currentFrequency = parseFloat(frequencySlider.value);
+    $("frequencyValue").textContent =
+        formatNumber(currentFrequency, 0);
+    updatePhysics();
+});
+
+// ============================================================
+// ACORDEÃO
+// ============================================================
+
+$("infoToggleBtn").addEventListener("click", () => {
+    const box = $("infoBox");
+    const icon = $("accordionIcon");
+
+    if (box.style.maxHeight) {
+        box.style.maxHeight = null;
+        icon.textContent = "+";
+    } else {
+        box.style.maxHeight = box.scrollHeight + "px";
+        icon.textContent = "−";
+    }
+});
+
+// ============================================================
+// REDIMENSIONAMENTO
+// ============================================================
+
+function resizeScene() {
+    const width = Math.max(1, container.clientWidth);
+    const height = Math.max(1, container.clientHeight);
 
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
 
     renderer.setSize(width, height);
 
-    layoutHUD();
-  }
+    updateHUDLayout();
+    updateWatermarkLayout();
+}
 
-  window.addEventListener("resize", resize);
+window.addEventListener("resize", resizeScene);
 
-  if (typeof ResizeObserver !== "undefined") {
-    const resizeObserver = new ResizeObserver(resize);
-    resizeObserver.observe(container);
-  }
+// ============================================================
+// GRAVAÇÃO DE VÍDEO
+// ============================================================
 
-  // ----------------------------------------------------------
-  // 26. GRAVAÇÃO DE VÍDEO
-  // ----------------------------------------------------------
+let mediaRecorder = null;
+let recordedChunks = [];
 
-  if (
-    recordBtn &&
-    renderer.domElement.captureStream &&
-    typeof MediaRecorder !== "undefined"
-  ) {
-    let recorder = null;
-    let chunks = [];
-    let recordingTimer = null;
-
-    recordBtn.addEventListener("click", () => {
-      if (
-        recorder &&
-        recorder.state === "recording"
-      ) {
+$("recordBtn").addEventListener("click", () => {
+    if (!renderer.domElement.captureStream || !window.MediaRecorder) {
+        alert("A gravação não é suportada neste navegador.");
         return;
-      }
+    }
 
-      const durationInput =
-        document.getElementById("recordDuration");
+    if (mediaRecorder && mediaRecorder.state === "recording") return;
 
-      const filenameInput =
-        document.getElementById("recordFilename");
-
-      const seconds = Math.max(
+    const duration = Math.max(
         1,
-        Math.min(
-          60,
-          parseInt(durationInput?.value || "10", 10) || 10
-        )
-      );
+        Math.min(60, parseInt($("recordDuration").value, 10) || 10)
+    );
 
-      const stream =
-        renderer.domElement.captureStream(30);
+    const stream = renderer.domElement.captureStream(30);
 
-      let mime = "video/webm;codecs=vp9";
+    let mimeType = "";
 
-      if (!MediaRecorder.isTypeSupported(mime)) {
-        mime = "video/webm";
-      }
+    if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) {
+        mimeType = "video/webm;codecs=vp9";
+    } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
+        mimeType = "video/webm;codecs=vp8";
+    } else if (MediaRecorder.isTypeSupported("video/webm")) {
+        mimeType = "video/webm";
+    }
 
-      if (
-        MediaRecorder.isTypeSupported(
-          "video/mp4;codecs=avc1.42E01E"
-        )
-      ) {
-        mime = "video/mp4;codecs=avc1.42E01E";
-      }
+    const options = mimeType ? { mimeType } : undefined;
 
-      try {
-        recorder = new MediaRecorder(stream, {
-          mimeType: mime
-        });
-      } catch (error) {
-        console.error("Erro ao iniciar gravação:", error);
-
-        stream.getTracks().forEach(track => track.stop());
-
+    try {
+        mediaRecorder = new MediaRecorder(stream, options);
+    } catch (error) {
+        alert("Não foi possível iniciar a gravação.");
         return;
-      }
+    }
 
-      chunks = [];
+    recordedChunks = [];
 
-      recorder.ondataavailable = event => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
+    mediaRecorder.ondataavailable = event => {
+        if (event.data && event.data.size > 0) {
+            recordedChunks.push(event.data);
         }
-      };
+    };
 
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, {
-          type: mime
+    mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, {
+            type: mimeType || "video/webm"
         });
 
         const url = URL.createObjectURL(blob);
 
         const filename =
-          filenameInput?.value.trim() ||
-          "lavina-hipertermia";
-
-        const extension = mime.includes("mp4")
-          ? "mp4"
-          : "webm";
+            $("recordFilename").value.trim() ||
+            `hipertermia-x${selectedComposition.replace(".", "_")}`;
 
         const link = document.createElement("a");
-
         link.href = url;
-        link.download = filename + "." + extension;
+        link.download = `${filename}.webm`;
 
         document.body.appendChild(link);
         link.click();
         link.remove();
 
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 30000);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
 
-        recordBtn.textContent = "Gravar animação";
-        recordBtn.disabled = false;
+        $("recordBtn").textContent = "Gravar";
+        $("recordBtn").classList.remove("recording");
+        $("recordBtn").disabled = false;
+    };
 
-        stream.getTracks().forEach(track => track.stop());
-      };
+    mediaRecorder.start();
 
-      recorder.start();
+    $("recordBtn").textContent = "Gravando...";
+    $("recordBtn").classList.add("recording");
+    $("recordBtn").disabled = true;
 
-      recordBtn.disabled = true;
-      recordBtn.textContent = "Gravando...";
-
-      let elapsed = 0;
-
-      recordingTimer = setInterval(() => {
-        elapsed++;
-
-        recordBtn.textContent =
-          `Gravando... (${elapsed}s / ${seconds}s)`;
-
-        if (elapsed >= seconds) {
-          clearInterval(recordingTimer);
-
-          if (recorder.state === "recording") {
-            recorder.stop();
-          }
+    setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
         }
-      }, 1000);
-    });
-  }
+    }, duration * 1000);
+});
 
-  // ----------------------------------------------------------
-  // 27. INICIALIZAÇÃO
-  // ----------------------------------------------------------
+// ============================================================
+// LOOP PRINCIPAL
+// ============================================================
 
-  updateExperimentalReadouts();
-  updateReadouts();
+function animate() {
+    requestAnimationFrame(animate);
 
-  camera.lookAt(0, 0, 0);
+    const delta = Math.min(clock.getDelta(), 0.05);
+    visualTime += delta;
 
-  if (controls) {
-    controls.target.set(0, 0, 0);
+    for (const particle of particles) {
+        updateParticleAnimation(particle, delta);
+    }
+
     controls.update();
-  }
 
-  animate();
+    renderer.clear();
+    renderer.render(scene, camera);
 
-  console.log(
-    "LAVINA: simulação de hipertermia magnética inicializada."
-  );
+    renderer.clearDepth();
+    renderer.render(hudScene, hudCamera);
+}
 
-})();
+// ============================================================
+// INICIALIZAÇÃO
+// ============================================================
+
+function initialize() {
+    selectedComposition = compositionSelect.value;
+    selectedMethod = methodSelect.value;
+
+    const sample = getCurrentSample();
+
+    currentDiameter = sample.diameter;
+    diameterSlider.value = sample.diameter;
+    $("diameterValue").textContent = formatNumber(sample.diameter, 1);
+
+    $("tempValue").textContent = currentT;
+    $("fieldValue").textContent = currentH0;
+    $("frequencyValue").textContent = currentFrequency;
+
+    updateSampleParameters();
+
+    $("loading").style.display = "none";
+
+    resizeScene();
+    animate();
+}
+
+initialize();
