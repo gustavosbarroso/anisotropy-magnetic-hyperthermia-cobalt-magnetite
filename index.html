@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -26,8 +25,6 @@ body {
     flex-direction: row-reverse;
     color: #e6edf3;
 }
-
-/* PAINEL DE CONTROLE */
 
 #ui-layer {
     width: 25%;
@@ -233,8 +230,6 @@ button:hover {
 .citationBox strong {
     color: #c9d1d9;
 }
-
-/* VISUALIZAÇÃO */
 
 #canvas-container {
     width: 75%;
@@ -489,7 +484,7 @@ button:hover {
     </div>
 
     <div id="legend">
-        <div><span class="legend-dot" style="background:#e87545"></span>Nanopartículas</div>
+        <div><span class="legend-dot" style="background:#e87545"></span>Nanopartícula</div>
         <div><span class="legend-dot" style="background:#58a6ff"></span>Momentos magnéticos</div>
         <div><span class="legend-dot" style="background:#ffbb66"></span>Campo magnético aplicado</div>
     </div>
@@ -505,9 +500,9 @@ const MU0 = 4 * Math.PI * 1e-7;
 const KB = 1.380649e-23;
 const TAU0 = 1e-10;
 
-const DENSITY = 5170;       // kg/m³
-const MS_MASS = 80;         // emu/g
-const MS = MS_MASS * DENSITY; // A/m
+const DENSITY = 5170;
+const MS_MASS = 80;
+const MS = MS_MASS * DENSITY;
 
 const Oe_TO_Am = 1000 / (4 * Math.PI);
 
@@ -543,31 +538,22 @@ function calculate() {
     const d = d_nm * 1e-9;
     const V = (4 / 3) * Math.PI * Math.pow(d / 2, 3);
 
-    // 1 erg/cm³ = 0.1 J/m³
     const K = K_input * 1e5 * 0.1;
-
-    // Conversão para SI
     const H = H_oe * Oe_TO_Am;
     const f = f_kHz * 1e3;
 
-    // Relaxação de Néel
     const exponent = K * V / (KB * T);
     const tau = TAU0 * Math.exp(Math.min(exponent, 700));
 
-    // Susceptibilidade inicial
     const chi = MU0 * MS * MS * V / (3 * KB * T);
 
-    // Potência por unidade de volume
     const omegaTau = 2 * Math.PI * f * tau;
 
     const Pvol =
         MU0 * Math.PI * chi * H * H * f *
         (omegaTau / (1 + omegaTau * omegaTau));
 
-    // Conversão para potência específica
     const Pspecific = Pvol / DENSITY;
-
-    // Defasagem da resposta linear
     const phase = Math.atan(omegaTau) * 180 / Math.PI;
 
     return {
@@ -584,7 +570,6 @@ function calculate() {
 function formatScientific(value, digits = 2) {
     if (!Number.isFinite(value)) return "—";
     if (value === 0) return "0";
-
     return value.toExponential(digits);
 }
 
@@ -662,13 +647,13 @@ fillLight.position.set(-6, -3, -5);
 scene.add(fillLight);
 
 // ======================================================
-// PARTÍCULAS
+// PARTÍCULA ÚNICA
 // ======================================================
 
 const particleGroup = new THREE.Group();
 scene.add(particleGroup);
 
-const particleGeometry = new THREE.SphereGeometry(0.16, 24, 24);
+const particleGeometry = new THREE.SphereGeometry(0.65, 32, 32);
 
 const particleMaterial = new THREE.MeshStandardMaterial({
     color: 0xb95c3b,
@@ -679,43 +664,27 @@ const particleMaterial = new THREE.MeshStandardMaterial({
 const particles = [];
 const moments = [];
 
-const NX = 5;
-const NY = 4;
-const NZ = 4;
+const particle = new THREE.Mesh(
+    particleGeometry,
+    particleMaterial.clone()
+);
 
-for (let x = 0; x < NX; x++) {
-    for (let y = 0; y < NY; y++) {
-        for (let z = 0; z < NZ; z++) {
+particle.position.set(0, 0, 0);
+particleGroup.add(particle);
+particles.push(particle);
 
-            const particle = new THREE.Mesh(
-                particleGeometry,
-                particleMaterial.clone()
-            );
+// Momento magnético da nanopartícula
+const arrow = new THREE.ArrowHelper(
+    new THREE.Vector3(0, 1, 0),
+    particle.position.clone(),
+    1.8,
+    0x58a6ff,
+    0.45,
+    0.3
+);
 
-            particle.position.set(
-                (x - (NX - 1) / 2) * 1.05,
-                (y - (NY - 1) / 2) * 1.05,
-                (z - (NZ - 1) / 2) * 1.05
-            );
-
-            particleGroup.add(particle);
-            particles.push(particle);
-
-            // Momento magnético: seta azul
-            const arrow = new THREE.ArrowHelper(
-                new THREE.Vector3(0, 1, 0),
-                particle.position.clone(),
-                0.58,
-                0x58a6ff,
-                0.17,
-                0.12
-            );
-
-            particleGroup.add(arrow);
-            moments.push(arrow);
-        }
-    }
-}
+particleGroup.add(arrow);
+moments.push(arrow);
 
 // ======================================================
 // CAMPO MAGNÉTICO APLICADO
@@ -764,9 +733,6 @@ function animate() {
 
     const r = calculate();
 
-    // Frequência visual independente da frequência física.
-    // O fator de fase depende de tau e f, mas o movimento
-    // é desacelerado para facilitar a observação.
     const visualOmega = 1.5 + 1.2 *
         (r.f_kHz / 1000);
 
@@ -786,10 +752,9 @@ function animate() {
         0.23
     );
 
-    // Resposta dos momentos magnéticos.
-    // A amplitude e a defasagem são inspiradas na
-    // resposta linear de Debye.
+    // Resposta do momento magnético
     const phase = Math.atan(r.omegaTau);
+
     const response = Math.sin(
         animationTime * visualOmega - phase
     );
@@ -803,7 +768,6 @@ function animate() {
 
         const arrow = moments[i];
 
-        // Pequenas diferenças de orientação entre partículas
         const localPhase = i * 0.19;
 
         const angle = 0.28 * Math.sin(
@@ -818,14 +782,12 @@ function animate() {
 
         arrow.setDirection(direction);
 
-        // Comprimento esquemático da resposta
         arrow.setLength(
             0.28 + 0.32 * alignment,
             0.14,
             0.10
         );
 
-        // Variação sutil de intensidade visual
         const intensity = 0.65 + 0.35 * alignment;
 
         arrow.line.material.opacity = intensity;
