@@ -1,3 +1,4 @@
+
 "use strict";
 
 // ============================================================
@@ -8,16 +9,11 @@ const MU0 = 4 * Math.PI * 1e-7;
 const KB = 1.380649e-23;
 const TAU0 = 1e-10;
 
-// Densidade aproximada adotada para a conversão de Ms.
-// Hipótese do modelo: 5170 kg/m³ para os dois casos.
 const DENSITY = 5170;
 
-// Conversões
 const ERG_CM3_TO_J_M3 = 0.1;
 const OE_TO_AM = 1000 / (4 * Math.PI);
 
-// Valores de K_eff em unidades de 10^5 erg/cm³.
-// As incertezas são as reportadas na Tabela 2.
 const SAMPLES = {
     "0": {
         name: "Fe3O4",
@@ -105,7 +101,7 @@ function formatScientific(value, digits = 2) {
     const exponent = Math.floor(Math.log10(Math.abs(value)));
     const mantissa = value / Math.pow(10, exponent);
 
-    return `formatNumber(mantissa,digits)×10{toSuperscript(exponent)}`;
+    return `${formatNumber(mantissa, digits)}×10${toSuperscript(exponent)}`;
 }
 
 function toSuperscript(number) {
@@ -166,9 +162,7 @@ function updateSampleParameters() {
     $("alphaValue").textContent = formatNumber(sample.alpha, 2);
 
     $("keffSliderValue").textContent = formatNumber(currentK, 2);
-
-    $("diameterValue").textContent =
-        formatNumber(currentDiameter, 1);
+    $("diameterValue").textContent = formatNumber(currentDiameter, 1);
 
     updatePhysics();
 }
@@ -232,12 +226,21 @@ function calculatePhysics() {
     let powerVolume = 0;
 
     if (Number.isFinite(tauN)) {
-        const denominator = 1 + omegaTau * omegaTau;
+        // Forma numericamente estável de:
+        // omegaTau / (1 + omegaTau²)
+        let relaxationFactor;
+
+        if (Math.abs(omegaTau) > 1e150) {
+            relaxationFactor = 1 / omegaTau;
+        } else {
+            relaxationFactor =
+                omegaTau / (1 + omegaTau * omegaTau);
+        }
 
         powerVolume =
             MU0 * Math.PI * chi0 *
             H0 * H0 * frequency *
-            omegaTau / denominator;
+            relaxationFactor;
     }
 
     // Conversão para potência específica (W/g)
@@ -288,6 +291,7 @@ function updatePhysics() {
     $("keffSliderValue").textContent = formatNumber(currentK, 2);
 
     $("tauValue").textContent = formatTime(result.tauN);
+
     $("omegaTauValue").textContent =
         formatScientific(result.omegaTau, 2);
 
@@ -338,6 +342,9 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
+
+// Necessário para desenhar o HUD sem apagar a cena 3D.
+renderer.autoClear = false;
 
 container.appendChild(renderer.domElement);
 
@@ -392,7 +399,6 @@ const boxMaterial = new THREE.LineBasicMaterial({
 const box = new THREE.LineSegments(boxEdges, boxMaterial);
 scene.add(box);
 
-// Eixos discretos
 const axes = new THREE.AxesHelper(18);
 axes.material.transparent = true;
 axes.material.opacity = 0.35;
@@ -408,20 +414,17 @@ const fieldArrow = new THREE.ArrowHelper(
     new THREE.Vector3(0, 1, 0),
     fieldOrigin,
     27,
-    0x58a6ff,
+    0xffbb66,
     5,
     2.8
 );
 
 scene.add(fieldArrow);
 
-const fieldLinePoints = [
+const fieldLineGeometry = new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(0, -31, 0),
     new THREE.Vector3(0, 31, 0)
-];
-
-const fieldLineGeometry = new THREE.BufferGeometry()
-    .setFromPoints(fieldLinePoints);
+]);
 
 const fieldLine = new THREE.Line(
     fieldLineGeometry,
@@ -438,7 +441,68 @@ fieldLine.computeLineDistances();
 scene.add(fieldLine);
 
 // ============================================================
-// NANOPARTÍCULAS
+// ONDA SENOIDAL DO CAMPO
+// ============================================================
+
+// Representação visual esquemática do campo alternado.
+// A onda percorre a cena e retorna periodicamente.
+
+const WAVE_POINTS = 180;
+const WAVE_LENGTH = 52;
+const WAVE_AMPLITUDE = 5.5;
+const WAVE_K = (2 * Math.PI) / 18;
+
+const wavePositions = new Float32Array(WAVE_POINTS * 3);
+
+const waveGeometry = new THREE.BufferGeometry();
+
+waveGeometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(wavePositions, 3)
+);
+
+const waveMaterial = new THREE.LineBasicMaterial({
+    color: 0xffbb66,
+    transparent: true,
+    opacity: 0.95
+});
+
+const electromagneticWave = new THREE.Line(
+    waveGeometry,
+    waveMaterial
+);
+
+scene.add(electromagneticWave);
+
+function updateElectromagneticWave(time) {
+    const positions = waveGeometry.attributes.position.array;
+
+    // Deslocamento de ida e volta.
+    const waveTravel = 18 * Math.sin(time * 0.65);
+
+    for (let i = 0; i < WAVE_POINTS; i++) {
+        const x =
+            -WAVE_LENGTH / 2 +
+            (i / (WAVE_POINTS - 1)) * WAVE_LENGTH;
+
+        const phase = WAVE_K * (x - waveTravel);
+
+        const y = WAVE_AMPLITUDE * Math.sin(phase);
+
+        // Plano frontal da partícula.
+        const z = 5;
+
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+    }
+
+    waveGeometry.attributes.position.needsUpdate = true;
+    waveGeometry.computeBoundingSphere();
+}
+
+// ============================================================
+// NANOPARTÍCULA ÚNICA
 // ============================================================
 
 const PARTICLE_COUNT = 1;
@@ -446,8 +510,8 @@ const PARTICLE_RADIUS = 2.1;
 
 const sphereGeometry = new THREE.SphereGeometry(
     PARTICLE_RADIUS,
-    32,
-    24
+    48,
+    32
 );
 
 const sphereMaterial = new THREE.MeshStandardMaterial({
@@ -461,10 +525,10 @@ const sphereMaterial = new THREE.MeshStandardMaterial({
 const particles = [];
 
 const momentMaterial = new THREE.MeshStandardMaterial({
-    color: 0x2ea043,
+    color: 0x58a6ff,
     roughness: 0.3,
     metalness: 0.25,
-    emissive: 0x123d20,
+    emissive: 0x123d70,
     emissiveIntensity: 0.25
 });
 
@@ -472,17 +536,17 @@ function createMomentArrow() {
     const group = new THREE.Group();
 
     const shaft = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.22, 0.22, 6.5, 12),
+        new THREE.CylinderGeometry(0.16, 0.16, 6.5, 12),
         momentMaterial
     );
 
     const head = new THREE.Mesh(
-        new THREE.ConeGeometry(0.85, 2.1, 16),
+        new THREE.ConeGeometry(0.65, 1.7, 16),
         momentMaterial
     );
 
     shaft.position.y = 0;
-    head.position.y = 4.25;
+    head.position.y = 4.0;
 
     group.add(shaft);
     group.add(head);
@@ -507,7 +571,6 @@ function createHeatWave() {
 
     const ring = new THREE.Mesh(heatWaveGeometry, material);
 
-    // Plano horizontal ao redor da nanopartícula
     ring.rotation.x = -Math.PI / 2;
     ring.visible = false;
 
@@ -515,8 +578,7 @@ function createHeatWave() {
         mesh: ring,
         age: 0,
         active: false,
-        duration: 1.8,
-        initialScale: 1
+        duration: 1.8
     };
 }
 
@@ -539,12 +601,6 @@ function createParticle(index) {
     arrow.position.copy(position);
     scene.add(arrow);
 
-    const initialDirection = new THREE.Vector3(
-        Math.random() - 0.5,
-        Math.random() - 0.5,
-        Math.random() - 0.5
-    ).normalize();
-
     const waves = [];
 
     for (let i = 0; i < 3; i++) {
@@ -558,11 +614,10 @@ function createParticle(index) {
         mesh,
         arrow,
         position,
-        initialDirection,
-        currentDirection: initialDirection.clone(),
         waves,
-        emissionTimer: Math.random() * 1.2,
-        pulseOffset: Math.random() * Math.PI * 2
+        emissionTimer: 0,
+        pulseOffset: Math.random() * Math.PI * 2,
+        thermalLevel: 0
     });
 }
 
@@ -571,7 +626,7 @@ for (let i = 0; i < PARTICLE_COUNT; i++) {
 }
 
 // ============================================================
-// HUD — PAINEL FLUTUANTE NO ESTILO DA REFERÊNCIA
+// HUD — PAINEL FLUTUANTE
 // ============================================================
 
 const hudScene = new THREE.Scene();
@@ -798,13 +853,14 @@ function updateHeatWaves(particle, delta, heatIntensity) {
         wave.mesh.scale.setScalar(expansion);
 
         wave.mesh.material.opacity =
-            0.75 * Math.pow(1 - progress, 1.3) *
+            0.75 *
+            Math.pow(1 - progress, 1.3) *
             Math.min(1, heatIntensity * 2.5 + 0.15);
     }
 }
 
 // ============================================================
-// DINÂMICA VISUAL DOS MOMENTOS MAGNÉTICOS
+// DINÂMICA VISUAL DO MOMENTO MAGNÉTICO
 // ============================================================
 
 const UP_AXIS = new THREE.Vector3(0, 1, 0);
@@ -813,9 +869,15 @@ const clock = new THREE.Clock();
 
 let visualTime = 0;
 
-// A frequência visual é propositalmente desacelerada.
-// Ela não altera a frequência física usada no cálculo.
+// Frequência visual desacelerada para permitir observar
+// a oscilação. Não modifica a frequência física do modelo.
 const VISUAL_OMEGA = 2.2;
+
+const coolColor = new THREE.Color(0x428bd2);
+const hotColor = new THREE.Color(0xff572e);
+
+const coolEmission = new THREE.Color(0x102b4a);
+const hotEmission = new THREE.Color(0xff2600);
 
 function updateParticleAnimation(particle, delta) {
     const physical = calculatePhysics();
@@ -826,30 +888,25 @@ function updateParticleAnimation(particle, delta) {
         ? physical.phase
         : Math.PI / 2;
 
-    const responseAmplitude =
-        1 / Math.sqrt(1 + physical.omegaTau * physical.omegaTau);
+    // Oscilação angular do momento magnético.
+    // A defasagem vem do modelo de relaxação de Néel.
+    const spinAngle =
+        0.95 * Math.sin(VISUAL_OMEGA * visualTime - visualPhase);
 
-    const visualMagnetization =
-        responseAmplitude *
-        Math.sin(VISUAL_OMEGA * visualTime - visualPhase);
-
-    const target = new THREE.Vector3(
-        particle.initialDirection.x * 0.48,
-        visualMagnetization,
-        particle.initialDirection.z * 0.48
+    const spinDirection = new THREE.Vector3(
+        Math.sin(spinAngle),
+        Math.cos(spinAngle),
+        0.12 * Math.sin(VISUAL_OMEGA * visualTime - visualPhase)
     ).normalize();
-
-    particle.currentDirection.lerp(target, 1 - Math.exp(-delta * 3.5));
-    particle.currentDirection.normalize();
 
     particle.arrow.position.copy(particle.position);
 
     particle.arrow.quaternion.setFromUnitVectors(
         UP_AXIS,
-        particle.currentDirection
+        spinDirection
     );
 
-    // Campo alternado: seta muda de sentido e comprimento.
+    // Campo alternado: inversão do sentido da seta.
     const fieldDirection = new THREE.Vector3(
         0,
         Math.sign(visualField || 1),
@@ -859,33 +916,68 @@ function updateParticleAnimation(particle, delta) {
     fieldArrow.setDirection(fieldDirection);
 
     const fieldLength = 9 + 18 * Math.abs(visualField);
+
     fieldArrow.setLength(fieldLength, 4.5, 2.5);
 
-    // Pulsação luminosa da partícula associada à dissipação.
-    const pulse =
-        0.5 + 0.5 * Math.sin(
-            VISUAL_OMEGA * visualTime * 2 + particle.pulseOffset
-        );
+    // ========================================================
+    // AQUECIMENTO E RESFRIAMENTO VISUAL
+    // ========================================================
 
-    const thermalIntensity = Math.min(
+    // Intensidade normalizada a partir da potência específica.
+    const spaIntensity = Math.min(
         1,
-        Math.max(0, Math.log10(1 + Math.max(currentSPA, 0)) / 3)
+        Math.max(
+            0,
+            Math.log10(1 + Math.max(currentSPA, 0)) / 3
+        )
     );
 
-    particle.mesh.material.emissive.setRGB(
-        0.05 + 0.55 * thermalIntensity * pulse,
-        0.08 + 0.12 * thermalIntensity * pulse,
-        0.15
+    // A dissipação instantânea acompanha H(t)².
+    const instantaneousHeating =
+        Math.pow(visualField, 2) * spaIntensity;
+
+    // Resposta térmica visual suavizada.
+    const thermalResponseTime = 0.8;
+    const thermalFactor =
+        1 - Math.exp(-delta / thermalResponseTime);
+
+    particle.thermalLevel +=
+        (instantaneousHeating - particle.thermalLevel) *
+        thermalFactor;
+
+    const thermalLevel = THREE.MathUtils.clamp(
+        particle.thermalLevel,
+        0,
+        1
+    );
+
+    // Cor da esfera: azul -> laranja-avermelhado.
+    particle.mesh.material.color.lerpColors(
+        coolColor,
+        hotColor,
+        thermalLevel
+    );
+
+    particle.mesh.material.emissive.lerpColors(
+        coolEmission,
+        hotEmission,
+        thermalLevel
     );
 
     particle.mesh.material.emissiveIntensity =
-        0.3 + 1.1 * thermalIntensity * pulse;
+        0.2 + 1.1 * thermalLevel;
 
+    // Pequena expansão visual durante o aquecimento.
     particle.mesh.scale.setScalar(
-        1 + 0.035 * pulse * thermalIntensity
+        1 + 0.025 * thermalLevel
     );
 
-    updateHeatWaves(particle, delta, thermalIntensity);
+    // Ondas térmicas acompanham o nível de aquecimento.
+    updateHeatWaves(
+        particle,
+        delta,
+        thermalLevel
+    );
 }
 
 // ============================================================
@@ -898,6 +990,7 @@ compositionSelect.addEventListener("change", () => {
     const sample = getCurrentSample();
 
     diameterSlider.value = sample.diameter;
+
     $("diameterValue").textContent =
         formatNumber(sample.diameter, 1);
 
@@ -936,8 +1029,10 @@ tempSlider.addEventListener("input", () => {
 
 diameterSlider.addEventListener("input", () => {
     currentDiameter = parseFloat(diameterSlider.value);
+
     $("diameterValue").textContent =
         formatNumber(currentDiameter, 1);
+
     updatePhysics();
 });
 
@@ -949,8 +1044,10 @@ fieldSlider.addEventListener("input", () => {
 
 frequencySlider.addEventListener("input", () => {
     currentFrequency = parseFloat(frequencySlider.value);
+
     $("frequencyValue").textContent =
         formatNumber(currentFrequency, 0);
+
     updatePhysics();
 });
 
@@ -1086,17 +1183,24 @@ function animate() {
     requestAnimationFrame(animate);
 
     const delta = Math.min(clock.getDelta(), 0.05);
+
     visualTime += delta;
 
+    // Onda senoidal de ida e volta.
+    updateElectromagneticWave(visualTime);
+
+    // Atualização da nanopartícula única.
     for (const particle of particles) {
         updateParticleAnimation(particle, delta);
     }
 
     controls.update();
 
+    // Primeiro renderiza a cena 3D.
     renderer.clear();
     renderer.render(scene, camera);
 
+    // Depois desenha o HUD sem limpar a imagem anterior.
     renderer.clearDepth();
     renderer.render(hudScene, hudCamera);
 }
@@ -1113,7 +1217,9 @@ function initialize() {
 
     currentDiameter = sample.diameter;
     diameterSlider.value = sample.diameter;
-    $("diameterValue").textContent = formatNumber(sample.diameter, 1);
+
+    $("diameterValue").textContent =
+        formatNumber(sample.diameter, 1);
 
     $("tempValue").textContent = currentT;
     $("fieldValue").textContent = currentH0;
