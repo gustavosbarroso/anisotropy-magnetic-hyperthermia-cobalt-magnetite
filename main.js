@@ -441,7 +441,7 @@ scene.add(fieldLine);
 // NANOPARTÍCULAS
 // ============================================================
 
-const PARTICLE_COUNT = 15;
+const PARTICLE_COUNT = 1;
 const PARTICLE_RADIUS = 2.1;
 
 const sphereGeometry = new THREE.SphereGeometry(
@@ -521,18 +521,7 @@ function createHeatWave() {
 }
 
 function createParticlePosition(index) {
-    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-    const y = 1 - (index / (PARTICLE_COUNT - 1)) * 2;
-    const radius = Math.sqrt(1 - y * y);
-    const theta = goldenAngle * index;
-
-    const spread = 20;
-
-    return new THREE.Vector3(
-        Math.cos(theta) * radius * spread,
-        y * spread,
-        Math.sin(theta) * radius * spread
-    );
+    return new THREE.Vector3(0, 0, 0);
 }
 
 function createParticle(index) {
