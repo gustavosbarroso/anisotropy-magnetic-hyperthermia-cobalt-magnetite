@@ -1,8 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Hipertermia Magnética — Fe₃O₄</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -15,154 +17,361 @@
     box-sizing: border-box;
 }
 
+:root {
+    --bg: #0d1117;
+    --panel: #111820;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --blue: #58a6ff;
+    --orange: #ff9b62;
+    --green: #2ea043;
+}
+
 body {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background-color: #111116;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Tahoma, sans-serif;
     display: flex;
     flex-direction: row-reverse;
-    color: #e6edf3;
 }
 
+/* =====================================================
+   PAINEL DE CONTROLE
+===================================================== */
+
 #ui-layer {
-    width: 25%;
-    min-width: 310px;
+    width: 370px;
+    min-width: 340px;
     height: 100%;
-    background: #0d1117;
-    border-left: 1px solid #30363d;
-    padding: 22px;
+    padding: 24px 22px;
     overflow-y: auto;
+    background: var(--bg);
+    border-left: 1px solid var(--border);
     z-index: 10;
+    scrollbar-width: thin;
+    scrollbar-color: #394552 transparent;
+}
+
+.header {
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
 }
 
 h1 {
     font-size: 21px;
-    color: #58a6ff;
+    font-weight: 650;
+    color: var(--blue);
+    letter-spacing: -0.4px;
     margin-bottom: 5px;
 }
 
 .subtitle {
+    color: var(--muted);
     font-size: 12px;
-    color: #8b949e;
-    margin-bottom: 22px;
+    line-height: 1.5;
 }
 
 .section-title {
-    font-size: 13px;
-    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 24px 0 15px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid var(--border);
     color: #c9d1d9;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-    letter-spacing: 0.7px;
-    margin: 22px 0 13px;
-    padding-bottom: 7px;
-    border-bottom: 1px solid #30363d;
 }
 
+.section-title::before {
+    content: "";
+    width: 3px;
+    height: 14px;
+    background: var(--blue);
+    border-radius: 3px;
+}
+
+/* =====================================================
+   SELETORES
+===================================================== */
+
+.select-group {
+    margin-bottom: 15px;
+}
+
+.select-group label,
+.control-header label {
+    display: block;
+    color: #c9d1d9;
+    font-size: 12px;
+    margin-bottom: 7px;
+}
+
+select {
+    width: 100%;
+    padding: 10px 11px;
+    color: var(--text);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    outline: none;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+select:focus {
+    border-color: var(--blue);
+}
+
+select option {
+    background: var(--card);
+}
+
+/* =====================================================
+   PARÂMETROS DA AMOSTRA
+===================================================== */
+
+.sample-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 13px;
+    margin-top: 16px;
+}
+
+.sample-card-title {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    margin-bottom: 11px;
+}
+
+.sample-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(139,148,158,0.12);
+}
+
+.sample-row:last-child {
+    border-bottom: none;
+}
+
+.sample-label {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.sample-value {
+    color: #c9d1d9;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* =====================================================
+   CONTROLES DESLIZANTES
+===================================================== */
+
 .control-group {
-    margin-bottom: 17px;
+    margin-bottom: 18px;
 }
 
 .control-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
     margin-bottom: 7px;
-    font-size: 13px;
 }
 
 .control-header label {
-    color: #c9d1d9;
+    margin-bottom: 0;
 }
 
 .value {
-    color: #58a6ff;
-    font-weight: bold;
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
 
 input[type="range"] {
     width: 100%;
-    accent-color: #58a6ff;
+    height: 4px;
+    appearance: none;
+    background: #30363d;
+    border-radius: 5px;
+    outline: none;
     cursor: pointer;
+    accent-color: var(--blue);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: var(--blue);
+    border: 2px solid #dceaff;
+    box-shadow: 0 0 7px rgba(88,166,255,0.3);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--blue);
+    border: 2px solid #dceaff;
+}
+
+input[type="range"]:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
 }
 
 .unit {
-    color: #8b949e;
-    font-size: 11px;
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 6px;
 }
 
+/* =====================================================
+   AJUSTE MANUAL DE ANISOTROPIA
+===================================================== */
+
+.manual-control {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 13px 0 15px;
+    color: #c9d1d9;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.manual-control input {
+    accent-color: var(--blue);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+/* =====================================================
+   RESULTADOS
+===================================================== */
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+}
+
+.stat-card {
+    min-width: 0;
+    min-height: 83px;
+    padding: 11px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+}
+
+.stat-label {
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 9px;
+    line-height: 1.4;
+}
+
+.stat-value {
+    color: var(--blue);
+    font-size: 15px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
+}
+
+.stat-unit {
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 4px;
+}
+
+.stat-card.highlight {
+    border-color: rgba(255,155,98,0.35);
+}
+
+.stat-card.highlight .stat-value {
+    color: var(--orange);
+}
+
+/* =====================================================
+   EQUAÇÕES
+===================================================== */
+
 .equation-box {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    padding: 12px;
-    margin-bottom: 12px;
-    font-family: Georgia, serif;
-    font-size: 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 13px;
+    margin-bottom: 10px;
     text-align: center;
     color: #e6edf3;
-    line-height: 1.8;
+    font-family: Georgia, serif;
+    font-size: 14px;
+    line-height: 1.9;
     overflow-x: auto;
 }
 
 .equation-label {
-    color: #8b949e;
-    font-size: 11px;
+    color: var(--muted);
     font-family: 'Segoe UI', sans-serif;
+    font-size: 10px;
     text-align: left;
-    margin-bottom: 5px;
+    margin-bottom: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.stats-row {
+/* =====================================================
+   BOTÕES
+===================================================== */
+
+.button-row {
     display: flex;
-    gap: 8px;
-    margin-bottom: 10px;
-}
-
-.stat-card {
-    flex: 1;
-    min-width: 0;
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    padding: 10px;
-}
-
-.stat-label {
-    font-size: 10px;
-    color: #8b949e;
-    margin-bottom: 6px;
-}
-
-.stat-value {
-    font-size: 15px;
-    color: #58a6ff;
-    font-weight: bold;
-    overflow-wrap: anywhere;
-}
-
-.stat-unit {
-    font-size: 10px;
-    color: #8b949e;
-    margin-top: 3px;
+    gap: 9px;
+    margin: 18px 0;
 }
 
 button {
+    padding: 10px 13px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
     background: #21262d;
     color: #c9d1d9;
-    border: 1px solid #30363d;
-    padding: 9px 12px;
-    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 12px;
-    transition: 0.2s;
+    transition: background 0.2s, border-color 0.2s;
 }
 
 button:hover {
     background: #30363d;
-    border-color: #58a6ff;
+    border-color: var(--blue);
 }
 
 .button-primary {
@@ -173,128 +382,167 @@ button:hover {
 
 .button-primary:hover {
     background: #388bfd;
-}
-
-.button-row {
-    display: flex;
-    gap: 8px;
-    margin: 15px 0;
+    border-color: #388bfd;
 }
 
 .button-row button {
     flex: 1;
 }
 
+/* =====================================================
+   GRAVAÇÃO
+===================================================== */
+
 .record-container {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    padding: 12px;
-    margin-top: 15px;
+    padding: 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    margin-top: 16px;
+}
+
+.record-title {
+    color: #c9d1d9;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 10px;
 }
 
 .record-container p {
-    color: #8b949e;
-    font-size: 11px;
+    color: var(--muted);
+    font-size: 10px;
     line-height: 1.5;
+    margin-top: 9px;
 }
+
+.record-field {
+    margin-bottom: 10px;
+}
+
+.record-field label {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 5px;
+}
+
+.record-field input {
+    width: 100%;
+    padding: 8px 9px;
+    color: var(--text);
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    outline: none;
+    font-size: 11px;
+}
+
+.record-field input:focus {
+    border-color: var(--blue);
+}
+
+#recordBtn {
+    width: 100%;
+    margin-top: 3px;
+}
+
+#recordBtn.recording {
+    background: #8b2525;
+    border-color: #d73a49;
+    color: white;
+}
+
+/* =====================================================
+   ACORDEÃO E REFERÊNCIA
+===================================================== */
 
 .accordion {
     width: 100%;
+    margin-top: 17px;
     text-align: left;
-    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .accordion-content {
-    display: none;
-    color: #8b949e;
-    font-size: 12px;
-    line-height: 1.6;
-    padding: 12px 4px;
+    max-height: 0;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.7;
+    transition: max-height 0.3s ease;
 }
 
-.accordion-content.open {
-    display: block;
+.accordion-content p {
+    padding: 12px 4px 0;
 }
 
 .citationBox {
-    border-left: 3px solid #58a6ff;
-    padding: 10px;
-    margin-top: 18px;
-    background: #161b22;
-    color: #8b949e;
-    font-size: 11px;
-    line-height: 1.5;
+    margin-top: 20px;
+    padding: 12px;
+    border-left: 3px solid var(--blue);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.6;
 }
 
 .citationBox strong {
     color: #c9d1d9;
 }
 
+/* =====================================================
+   ÁREA 3D
+===================================================== */
+
 #canvas-container {
-    width: 75%;
+    flex: 1;
+    min-width: 0;
     height: 100%;
     position: relative;
-    background: radial-gradient(ellipse at center, #171d28 0%, #111116 75%);
+    overflow: hidden;
+    background: radial-gradient(
+        ellipse at center,
+        #171d28 0%,
+        #0d1117 78%
+    );
 }
 
 #canvas-container canvas {
     display: block;
+    width: 100%;
+    height: 100%;
 }
 
-#hud {
+#loading {
     position: absolute;
-    top: 18px;
-    left: 18px;
-    pointer-events: none;
-    background: rgba(13,17,23,0.82);
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    padding: 12px 15px;
-    font-size: 12px;
-    color: #c9d1d9;
-    line-height: 1.7;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--blue);
+    background: rgba(13,17,23,0.85);
+    font-size: 13px;
+    z-index: 5;
 }
 
-#hud strong {
-    color: #58a6ff;
-}
-
-#legend {
-    position: absolute;
-    bottom: 18px;
-    left: 18px;
-    background: rgba(13,17,23,0.82);
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    padding: 12px 15px;
-    font-size: 11px;
-    color: #c9d1d9;
-    line-height: 1.8;
-    pointer-events: none;
-}
-
-.legend-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 7px;
-}
-
-#field-indicator {
-    position: absolute;
-    top: 18px;
-    right: 18px;
-    color: #ffbb66;
-    font-size: 12px;
-    text-align: right;
-    pointer-events: none;
-}
+/* =====================================================
+   RESPONSIVIDADE
+===================================================== */
 
 @media (max-width: 850px) {
     body {
         flex-direction: column;
+        overflow: auto;
+    }
+
+    #canvas-container {
+        width: 100%;
+        height: 55%;
+        min-height: 300px;
+        flex: none;
+        order: 1;
     }
 
     #ui-layer {
@@ -302,14 +550,22 @@ button:hover {
         height: 45%;
         min-width: 0;
         border-left: none;
-        border-top: 1px solid #30363d;
+        border-top: 1px solid var(--border);
         order: 2;
     }
+}
 
-    #canvas-container {
-        width: 100%;
-        height: 55%;
-        order: 1;
+@media (max-width: 480px) {
+    #ui-layer {
+        padding: 18px 16px;
+    }
+
+    .stats-grid {
+        gap: 7px;
+    }
+
+    .stat-card {
+        padding: 9px;
     }
 }
 </style>
@@ -317,545 +573,361 @@ button:hover {
 
 <body>
 
-<div id="ui-layer">
+<!-- ===================================================
+     PAINEL LATERAL
+=================================================== -->
 
-    <h1>Hipertermia Magnética</h1>
-    <div class="subtitle">Nanopartículas de magnetita — Fe₃O₄</div>
+<aside id="ui-layer">
+
+    <header class="header">
+        <h1>Hipertermia Magnética</h1>
+        <div class="subtitle">
+            Nanopartículas de magnetita e ferrita de cobalto
+        </div>
+    </header>
+
+    <!-- COMPOSIÇÃO -->
+
+    <div class="section-title">Composição da amostra</div>
+
+    <div class="select-group">
+        <label for="compositionSelect">Composição química</label>
+        <select id="compositionSelect">
+            <option value="0">Fe₃O₄ — x = 0.00</option>
+            <option value="0.020">Co₀.₀₂Fe₂.₉₈O₄ — x = 0.02</option>
+        </select>
+    </div>
+
+    <div class="sample-card">
+        <div class="sample-card-title">Dados experimentais</div>
+
+        <div class="sample-row">
+            <span class="sample-label">Magnetização de saturação</span>
+            <span class="sample-value" id="msValue">—</span>
+        </div>
+
+        <div class="sample-row">
+            <span class="sample-label">Diâmetro médio</span>
+            <span class="sample-value" id="diameterTableValue">—</span>
+        </div>
+
+        <div class="sample-row">
+            <span class="sample-label">Parâmetro α</span>
+            <span class="sample-value" id="alphaValue">—</span>
+        </div>
+    </div>
+
+    <!-- ANISOTROPIA -->
+
+    <div class="section-title">Anisotropia magnética</div>
+
+    <div class="select-group">
+        <label for="methodSelect">Método de determinação</label>
+        <select id="methodSelect">
+            <option value="MT">M(T)</option>
+            <option value="MR">Mr(T) / Ms</option>
+            <option value="HC">Hc(T)</option>
+        </select>
+    </div>
+
+    <div class="sample-card">
+        <div class="sample-card-title">Valor experimental de Keff</div>
+
+        <div class="sample-row">
+            <span class="sample-label">Keff</span>
+            <span class="sample-value" id="keffTableValue">—</span>
+        </div>
+
+        <div class="sample-row">
+            <span class="sample-label">Incerteza</span>
+            <span class="sample-value" id="keffUncertainty">—</span>
+        </div>
+    </div>
+
+    <label class="manual-control">
+        <input type="checkbox" id="manualK">
+        Ajustar Keff manualmente
+    </label>
+
+    <div class="control-group">
+        <div class="control-header">
+            <label for="keffSlider">Anisotropia efetiva</label>
+            <span class="value" id="keffSliderValue">4,10</span>
+        </div>
+        <input
+            type="range"
+            id="keffSlider"
+            min="0.2"
+            max="8"
+            step="0.1"
+            value="4.1"
+            disabled
+        >
+        <span class="unit">× 10⁵ erg/cm³</span>
+    </div>
+
+    <!-- PARÂMETROS FÍSICOS -->
 
     <div class="section-title">Parâmetros físicos</div>
 
     <div class="control-group">
         <div class="control-header">
-            <label>Temperatura</label>
-            <span class="value" id="temp-value">300 K</span>
+            <label for="tempSlider">Temperatura</label>
+            <span class="value" id="tempValue">300</span>
         </div>
-        <input id="temperature" type="range" min="250" max="400" step="1" value="300">
+        <input
+            type="range"
+            id="tempSlider"
+            min="250"
+            max="400"
+            step="1"
+            value="300"
+        >
+        <span class="unit">K</span>
     </div>
 
     <div class="control-group">
         <div class="control-header">
-            <label>Diâmetro da partícula</label>
-            <span class="value" id="diameter-value">9 nm</span>
+            <label for="diameterSlider">Diâmetro da nanopartícula</label>
+            <span class="value" id="diameterValue">7,9</span>
         </div>
-        <input id="diameter" type="range" min="5" max="25" step="0.5" value="9">
+        <input
+            type="range"
+            id="diameterSlider"
+            min="5"
+            max="25"
+            step="0.1"
+            value="7.9"
+        >
+        <span class="unit">nm</span>
     </div>
 
     <div class="control-group">
         <div class="control-header">
-            <label>Anisotropia efetiva (Keff)</label>
-            <span class="value" id="anisotropy-value">1.0 × 10⁵</span>
+            <label for="fieldSlider">Campo magnético H₀</label>
+            <span class="value" id="fieldValue">250</span>
         </div>
-        <input id="anisotropy" type="range" min="0.2" max="8" step="0.1" value="1">
-        <div class="unit">× 10⁵ erg/cm³</div>
+        <input
+            type="range"
+            id="fieldSlider"
+            min="50"
+            max="500"
+            step="10"
+            value="250"
+        >
+        <span class="unit">Oe</span>
     </div>
 
     <div class="control-group">
         <div class="control-header">
-            <label>Campo magnético (H₀)</label>
-            <span class="value" id="field-value">250 Oe</span>
+            <label for="frequencySlider">Frequência</label>
+            <span class="value" id="frequencyValue">624</span>
         </div>
-        <input id="field" type="range" min="50" max="500" step="10" value="250">
+        <input
+            type="range"
+            id="frequencySlider"
+            min="100"
+            max="1000"
+            step="1"
+            value="624"
+        >
+        <span class="unit">kHz</span>
     </div>
 
-    <div class="control-group">
-        <div class="control-header">
-            <label>Frequência (f)</label>
-            <span class="value" id="frequency-value">624 kHz</span>
-        </div>
-        <input id="frequency" type="range" min="100" max="1000" step="1" value="624">
-        <div class="unit">kHz</div>
-    </div>
+    <!-- MODELO FÍSICO -->
 
     <div class="section-title">Modelo físico</div>
 
     <div class="equation-box">
         <div class="equation-label">Relaxação de Néel</div>
-        τ<sub>N</sub> = τ<sub>0</sub> exp(K<sub>eff</sub>V<sub>mag</sub>/k<sub>B</sub>T)
+        τ<sub>N</sub> = τ<sub>0</sub>
+        exp(K<sub>eff</sub>V / k<sub>B</sub>T)
+    </div>
+
+    <div class="equation-box">
+        <div class="equation-label">Susceptibilidade inicial</div>
+        χ<sub>0</sub> =
+        μ<sub>0</sub>M<sub>s</sub>²V /
+        (3k<sub>B</sub>T)
     </div>
 
     <div class="equation-box">
         <div class="equation-label">Potência dissipada</div>
         P = μ<sub>0</sub>πχ<sub>0</sub>H<sub>0</sub>²f
-        ·
+        <br>
+        ×
         <span style="white-space:nowrap">
-        2πfτ / [1 + (2πfτ)²]
+            ωτ / [1 + (ωτ)²]
         </span>
     </div>
 
-    <div class="equation-box">
-        <div class="equation-label">Susceptibilidade inicial</div>
-        χ<sub>0</sub> = μ<sub>0</sub>M<sub>s</sub>²V<sub>mag</sub> / 3k<sub>B</sub>T
-    </div>
+    <!-- RESULTADOS -->
 
     <div class="section-title">Resultados calculados</div>
 
-    <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-label">Volume magnético</div>
-            <div class="stat-value" id="volume-result">381,7</div>
-            <div class="stat-unit">nm³</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Tempo de Néel</div>
-            <div class="stat-value" id="tau-result">—</div>
-            <div class="stat-unit">s</div>
-        </div>
-    </div>
+    <div class="stats-grid">
 
-    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Tempo de relaxação de Néel</div>
+            <div class="stat-value" id="tauValue">—</div>
+            <div class="stat-unit">τN</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Produto ωτ</div>
+            <div class="stat-value" id="omegaTauValue">—</div>
+            <div class="stat-unit">Adimensional</div>
+        </div>
+
         <div class="stat-card">
             <div class="stat-label">Susceptibilidade χ₀</div>
-            <div class="stat-value" id="chi-result">—</div>
-            <div class="stat-unit">adimensional</div>
+            <div class="stat-value" id="chiValue">—</div>
+            <div class="stat-unit">Adimensional</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Defasagem φ</div>
-            <div class="stat-value" id="phase-result">—</div>
-            <div class="stat-unit">graus</div>
-        </div>
-    </div>
 
-    <div class="stats-row">
         <div class="stat-card">
-            <div class="stat-label">Potência específica</div>
-            <div class="stat-value" id="power-result">—</div>
+            <div class="stat-label">Defasagem magnética</div>
+            <div class="stat-value" id="phaseValue">—</div>
+            <div class="stat-unit">Graus</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Potência volumétrica</div>
+            <div class="stat-value" id="powerVolumeValue">—</div>
+            <div class="stat-unit">W/m³</div>
+        </div>
+
+        <div class="stat-card highlight">
+            <div class="stat-label">Potência específica (SPA)</div>
+            <div class="stat-value" id="spaValue">—</div>
             <div class="stat-unit">W/g</div>
         </div>
+
     </div>
 
-    <div class="button-row">
-        <button class="button-primary" id="pause-button">Pausar</button>
-        <button id="reset-button">Restaurar</button>
-    </div>
+    <!-- GRAVAÇÃO -->
+
+    <div class="section-title">Registro da simulação</div>
 
     <div class="record-container">
+        <div class="record-title">Gravar animação</div>
+
+        <div class="record-field">
+            <label for="recordFilename">Nome do arquivo</label>
+            <input
+                type="text"
+                id="recordFilename"
+                value="hipertermia-x0"
+                placeholder="Nome do arquivo"
+            >
+        </div>
+
+        <div class="record-field">
+            <label for="recordDuration">Duração da gravação</label>
+            <input
+                type="number"
+                id="recordDuration"
+                min="1"
+                max="60"
+                value="10"
+            >
+        </div>
+
+        <button id="recordBtn" class="button-primary">
+            Gravar
+        </button>
+
         <p>
-            A visualização representa a resposta dos momentos magnéticos
-            ao campo alternado. A velocidade da animação é independente
-            da frequência física empregada nos cálculos.
+            A gravação registra a visualização tridimensional,
+            incluindo o campo magnético, a orientação do momento
+            magnético e as ondas térmicas.
         </p>
     </div>
 
-    <button class="accordion" id="details-button">
-        Sobre o modelo físico ▾
+    <!-- INFORMAÇÕES -->
+
+    <button class="accordion" id="infoToggleBtn">
+        <span>Sobre o modelo físico</span>
+        <span id="accordionIcon">+</span>
     </button>
-    <div class="accordion-content" id="details-content">
+
+    <div class="accordion-content" id="infoBox">
         <p>
             O modelo considera a relaxação de Néel como mecanismo
-            dominante, adotando τ = τN. A relaxação Browniana não
-            é incluída.
+            de relaxação magnética. O tempo característico é
+            determinado pela anisotropia efetiva, pelo volume
+            magnético e pela temperatura.
         </p>
-        <br>
+
         <p>
-            A potência é calculada pelo modelo de resposta linear.
-            A magnetização de saturação é tomada como 80 emu/g,
-            convertida para magnetização volumétrica usando a
-            densidade da magnetita (5170 kg/m³).
+            A potência dissipada é calculada a partir do modelo
+            de resposta linear, considerando a susceptibilidade
+            inicial e a defasagem entre o campo aplicado e a
+            resposta magnética.
         </p>
-        <br>
+
         <p>
-            A representação tridimensional é esquemática: não
-            corresponde a uma simulação estocástica microscópica
-            nem à integração da equação de Landau-Lifshitz-Gilbert.
+            A visualização tridimensional é esquemática. A
+            oscilação visual do momento magnético é desacelerada
+            para facilitar a observação e não representa uma
+            integração microscópica da dinâmica magnética.
+        </p>
+
+        <p>
+            A resposta térmica e as ondas de dissipação são
+            representações visuais associadas à potência
+            específica calculada pelo modelo.
         </p>
     </div>
 
+    <!-- REFERÊNCIA -->
+
     <div class="citationBox">
-        <strong>Referência</strong><br>
-        Control of Anisotropy and Magnetic Hyperthermia Effect by
-        Addition of Cobalt on Magnetite Nanoparticles.
-        ACS Applied Materials & Interfaces (2025), 17, 13083–13093.
+        <strong>Referência bibliográfica</strong><br><br>
+
+        Control of Anisotropy and Magnetic Hyperthermia Effect
+        by Addition of Cobalt on Magnetite Nanoparticles.
+        <br>
+        <em>ACS Applied Materials & Interfaces</em> (2025),
+        17, 13083–13093.
+        <br>
         DOI: 10.1021/acsami.4c03343.
     </div>
 
-</div>
+</aside>
 
-<div id="canvas-container">
+<!-- ===================================================
+     CENA THREE.JS
+=================================================== -->
 
-    <div id="hud">
-        <strong>Fe₃O₄ — x = 0.00</strong><br>
-        Campo alternado: <span id="hud-field">250 Oe</span><br>
-        Frequência: <span id="hud-frequency">624 kHz</span><br>
-        Temperatura: <span id="hud-temp">300 K</span>
+<main id="canvas-container">
+
+    <div id="loading">
+        Inicializando simulação...
     </div>
 
-    <div id="field-indicator">
-        H(t) = H₀ sen(ωt)
-    </div>
+</main>
 
-    <div id="legend">
-        <div><span class="legend-dot" style="background:#e87545"></span>Nanopartícula</div>
-        <div><span class="legend-dot" style="background:#58a6ff"></span>Momentos magnéticos</div>
-        <div><span class="legend-dot" style="background:#ffbb66"></span>Campo magnético aplicado</div>
-    </div>
-
-</div>
+<!-- ===================================================
+     JAVASCRIPT DA SIMULAÇÃO
+=================================================== -->
 
 <script>
-// ======================================================
-// CONSTANTES FÍSICAS — SI
-// ======================================================
-
-const MU0 = 4 * Math.PI * 1e-7;
-const KB = 1.380649e-23;
-const TAU0 = 1e-10;
-
-const DENSITY = 5170;
-const MS_MASS = 80;
-const MS = MS_MASS * DENSITY;
-
-const Oe_TO_Am = 1000 / (4 * Math.PI);
-
-// ======================================================
-// ELEMENTOS
-// ======================================================
-
-const $ = id => document.getElementById(id);
-
-const controls = {
-    temperature: $('temperature'),
-    diameter: $('diameter'),
-    anisotropy: $('anisotropy'),
-    field: $('field'),
-    frequency: $('frequency')
-};
-
-let running = true;
-let animationTime = 0;
-
-// ======================================================
-// CÁLCULO FÍSICO
-// ======================================================
-
-function calculate() {
-
-    const T = Number(controls.temperature.value);
-    const d_nm = Number(controls.diameter.value);
-    const K_input = Number(controls.anisotropy.value);
-    const H_oe = Number(controls.field.value);
-    const f_kHz = Number(controls.frequency.value);
-
-    const d = d_nm * 1e-9;
-    const V = (4 / 3) * Math.PI * Math.pow(d / 2, 3);
-
-    const K = K_input * 1e5 * 0.1;
-    const H = H_oe * Oe_TO_Am;
-    const f = f_kHz * 1e3;
-
-    const exponent = K * V / (KB * T);
-    const tau = TAU0 * Math.exp(Math.min(exponent, 700));
-
-    const chi = MU0 * MS * MS * V / (3 * KB * T);
-
-    const omegaTau = 2 * Math.PI * f * tau;
-
-    const Pvol =
-        MU0 * Math.PI * chi * H * H * f *
-        (omegaTau / (1 + omegaTau * omegaTau));
-
-    const Pspecific = Pvol / DENSITY;
-    const phase = Math.atan(omegaTau) * 180 / Math.PI;
-
-    return {
-        T, d_nm, K_input, H_oe, f_kHz,
-        V, tau, chi, Pvol, Pspecific, phase,
-        omegaTau
-    };
-}
-
-// ======================================================
-// FORMATAÇÃO
-// ======================================================
-
-function formatScientific(value, digits = 2) {
-    if (!Number.isFinite(value)) return "—";
-    if (value === 0) return "0";
-    return value.toExponential(digits);
-}
-
-function updateInterface() {
-
-    const r = calculate();
-
-    $('temp-value').textContent = `${r.T} K`;
-    $('diameter-value').textContent = `${r.d_nm} nm`;
-    $('anisotropy-value').textContent =
-        `${r.K_input.toFixed(1)} × 10⁵`;
-    $('field-value').textContent = `${r.H_oe} Oe`;
-    $('frequency-value').textContent = `${r.f_kHz} kHz`;
-
-    $('volume-result').textContent =
-        (r.V * 1e27).toFixed(1);
-
-    $('tau-result').textContent =
-        formatScientific(r.tau);
-
-    $('chi-result').textContent =
-        formatScientific(r.chi);
-
-    $('phase-result').textContent =
-        `${r.phase.toFixed(1)}°`;
-
-    $('power-result').textContent =
-        formatScientific(r.Pspecific / 1000);
-
-    $('hud-field').textContent = `${r.H_oe} Oe`;
-    $('hud-frequency').textContent = `${r.f_kHz} kHz`;
-    $('hud-temp').textContent = `${r.T} K`;
-}
-
-// ======================================================
-// THREE.JS — CENA
-// ======================================================
-
-const container = $('canvas-container');
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111116);
-
-const camera = new THREE.PerspectiveCamera(
-    45,
-    container.clientWidth / container.clientHeight,
-    0.1,
-    1000
-);
-
-camera.position.set(8, 6, 11);
-
-const renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    alpha: false
-});
-
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(container.clientWidth, container.clientHeight);
-container.appendChild(renderer.domElement);
-
-const orbit = new THREE.OrbitControls(camera, renderer.domElement);
-orbit.enableDamping = true;
-orbit.dampingFactor = 0.06;
-
-// Iluminação
-scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
-keyLight.position.set(5, 8, 6);
-scene.add(keyLight);
-
-const fillLight = new THREE.PointLight(0x4477ff, 0.8);
-fillLight.position.set(-6, -3, -5);
-scene.add(fillLight);
-
-// ======================================================
-// PARTÍCULA ÚNICA
-// ======================================================
-
-const particleGroup = new THREE.Group();
-scene.add(particleGroup);
-
-const particleGeometry = new THREE.SphereGeometry(0.65, 32, 32);
-
-const particleMaterial = new THREE.MeshStandardMaterial({
-    color: 0xb95c3b,
-    roughness: 0.42,
-    metalness: 0.15
-});
-
-const particles = [];
-const moments = [];
-
-const particle = new THREE.Mesh(
-    particleGeometry,
-    particleMaterial.clone()
-);
-
-particle.position.set(0, 0, 0);
-particleGroup.add(particle);
-particles.push(particle);
-
-// Momento magnético da nanopartícula
-const arrow = new THREE.ArrowHelper(
-    new THREE.Vector3(0, 1, 0),
-    particle.position.clone(),
-    1.8,
-    0x58a6ff,
-    0.45,
-    0.3
-);
-
-particleGroup.add(arrow);
-moments.push(arrow);
-
-// ======================================================
-// CAMPO MAGNÉTICO APLICADO
-// ======================================================
-
-const fieldArrow = new THREE.ArrowHelper(
-    new THREE.Vector3(0, 1, 0),
-    new THREE.Vector3(0, -3.4, 0),
-    2.1,
-    0xffbb66,
-    0.35,
-    0.23
-);
-
-scene.add(fieldArrow);
-
-// Eixo de referência
-const axisMaterial = new THREE.LineBasicMaterial({
-    color: 0x414b5b,
-    transparent: true,
-    opacity: 0.5
-});
-
-const axisGeometry = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(0, -4, 0),
-    new THREE.Vector3(0, 4, 0)
-]);
-
-scene.add(new THREE.Line(axisGeometry, axisMaterial));
-
-// ======================================================
-// ANIMAÇÃO
-// ======================================================
-
-const clock = new THREE.Clock();
-
-function animate() {
-
-    requestAnimationFrame(animate);
-
-    const dt = Math.min(clock.getDelta(), 0.05);
-
-    if (running) {
-        animationTime += dt;
-    }
-
-    const r = calculate();
-
-    const visualOmega = 1.5 + 1.2 *
-        (r.f_kHz / 1000);
-
-    const fieldSignal = Math.sin(animationTime * visualOmega);
-
-    // Campo aplicado alternado
-    const fieldDirection = new THREE.Vector3(
-        0,
-        fieldSignal >= 0 ? 1 : -1,
-        0
-    );
-
-    fieldArrow.setDirection(fieldDirection);
-    fieldArrow.setLength(
-        1.2 + 1.0 * Math.abs(fieldSignal),
-        0.35,
-        0.23
-    );
-
-    // Resposta do momento magnético
-    const phase = Math.atan(r.omegaTau);
-
-    const response = Math.sin(
-        animationTime * visualOmega - phase
-    );
-
-    const alignment = Math.max(
-        0.08,
-        Math.abs(response)
-    );
-
-    for (let i = 0; i < moments.length; i++) {
-
-        const arrow = moments[i];
-
-        const localPhase = i * 0.19;
-
-        const angle = 0.28 * Math.sin(
-            animationTime * 0.45 + localPhase
-        );
-
-        const direction = new THREE.Vector3(
-            Math.sin(angle) * 0.25,
-            response * 0.8 + 0.2,
-            Math.cos(angle) * 0.25
-        ).normalize();
-
-        arrow.setDirection(direction);
-
-        arrow.setLength(
-            0.28 + 0.32 * alignment,
-            0.14,
-            0.10
-        );
-
-        const intensity = 0.65 + 0.35 * alignment;
-
-        arrow.line.material.opacity = intensity;
-        arrow.cone.material.opacity = intensity;
-        arrow.line.material.transparent = true;
-        arrow.cone.material.transparent = true;
-    }
-
-    orbit.update();
-    renderer.render(scene, camera);
-}
-
-animate();
-
-// ======================================================
-// EVENTOS DOS CONTROLES
-// ======================================================
-
-Object.values(controls).forEach(control => {
-    control.addEventListener('input', updateInterface);
-});
-
-$('pause-button').addEventListener('click', () => {
-
-    running = !running;
-
-    $('pause-button').textContent =
-        running ? 'Pausar' : 'Continuar';
-});
-
-$('reset-button').addEventListener('click', () => {
-
-    controls.temperature.value = 300;
-    controls.diameter.value = 9;
-    controls.anisotropy.value = 1;
-    controls.field.value = 250;
-    controls.frequency.value = 624;
-
-    animationTime = 0;
-    running = true;
-
-    $('pause-button').textContent = 'Pausar';
-
-    updateInterface();
-});
-
-$('details-button').addEventListener('click', () => {
-    $('details-content').classList.toggle('open');
-});
-
-// ======================================================
-// RESPONSIVIDADE
-// ======================================================
-
-window.addEventListener('resize', () => {
-
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-
-    renderer.setSize(width, height);
-});
-
-// Inicialização
-updateInterface();
-
+/*
+    COLE AQUI O JAVASCRIPT NOVO QUE VOCÊ ENVIOU.
+
+    Não mantenha o JavaScript antigo do HTML anterior.
+    O código novo já contém:
+    - Modelo físico e parâmetros experimentais;
+    - Controles e atualização dos resultados;
+    - Cena Three.js;
+    - Nanopartícula única;
+    - Campo magnético alternado;
+    - Ondas térmicas;
+    - HUD e marca LAVINA;
+    - Gravação de vídeo.
+*/
 </script>
+
 </body>
 </html>
